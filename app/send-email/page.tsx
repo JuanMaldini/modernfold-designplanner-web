@@ -99,12 +99,6 @@ export default function SendEmailForm() {
                         >
                             {loading ? 'Sending...' : 'Send Email'}
                         </button>
-                        <button
-                            type="submit"
-                            disabled={loading}
-                        >
-                            Downlaod data
-                        </button>
                     </div>
 
                 </form>

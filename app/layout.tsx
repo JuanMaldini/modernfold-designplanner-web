@@ -14,6 +14,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
     title: "Designplanner Web App",
     description: "Modernfold Designplanner Web App",
+    icons: {
+    icon: "/modern.png",
+    shortcut: "/modern.png",
+    apple: "/modern.png",
+  },
 };
 
 export default function RootLayout({
@@ -23,7 +28,7 @@ export default function RootLayout({
 }>) {
     return (
         <html lang="en">
-            <body>
+            <body className="bg-gray-300">
                 {children}
             </body>
         </html>
