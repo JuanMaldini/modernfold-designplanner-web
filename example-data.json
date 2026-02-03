@@ -1,0 +1,16 @@
+{
+    "usuario": "Juan Pérez",
+    "email": "juan@example.com",
+    "tipo": "quota-request",
+    "detalles": {
+        "quotaSolicitada": 1000,
+        "razon": "Incremento de uso por proyecto nuevo",
+        "prioridad": "alta"
+    },
+    "fechaSolicitud": "2026-02-03T10:54:00-03:00",
+    "datosAdicionales": {
+        "empresa": "Mi Empresa S.A.",
+        "proyecto": "Proyecto Alpha",
+        "contacto": "+54 11 1234-5678"
+    }
+}
