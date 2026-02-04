@@ -77,95 +77,90 @@ export default function SendEmailForm() {
     };
 
     return (
-<div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
 
-  {/* Card */}
-  <div className="w-full max-w-md bg-white rounded-xl shadow-lg p-6">
+        <div className="w-full max-w-md bg-white rounded-xl shadow-lg p-6">
 
-    <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
 
-      {/* Nombre */}
-      <div className="flex flex-col gap-1">
-        <label className="text-sm font-medium text-gray-700">
-          Nombre
-        </label>
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-medium text-gray-700">
+                Nombre
+              </label>
 
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-          className="
-            px-3 py-2 border border-gray-300 rounded-md
-            focus:outline-none focus:ring-2 focus:ring-blue-500
-          "
-        />
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                className="
+                  px-3 py-2 border border-gray-300 rounded-md
+                  focus:outline-none focus:ring-2 focus:ring-blue-500
+                "
+              />
+            </div>
+
+            <div className="hidden">
+              <label className="text-sm font-medium text-gray-700">
+                Email Destinatario
+              </label>
+
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="px-3 py-2 border border-gray-300 rounded-md"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-medium text-gray-700">
+                Archivo JSON
+              </label>
+
+              <input
+                type="file"
+                id="json-file-input"
+                accept=".json"
+                onChange={handleJsonUpload}
+                required
+                className="
+                  text-sm text-gray-600
+                  file:mr-3 file:px-4 file:py-2
+                  file:rounded-md file:border-0
+                  file:bg-blue-50 file:text-blue-700
+                  hover:file:bg-blue-100
+                "
+              />
+            </div>
+
+            {jsonFileName && (
+              <p className="text-green-600 text-xs">
+                ✓ Archivo listo: {jsonFileName}
+              </p>
+            )}
+
+            <div className="flex justify-center pt-2">
+              <button
+                type="submit"
+                disabled={loading}
+                className="
+                  px-6 py-2 rounded-md font-medium text-white
+                  bg-blue-600 hover:bg-blue-700
+                  disabled:opacity-50 disabled:cursor-not-allowed
+                  transition
+                "
+              >
+                {loading ? 'Sending...' : 'Send Email'}
+              </button>
+            </div>
+
+          </form>
+
+        </div>
+
       </div>
-
-      {/* Email oculto */}
-      <div className="hidden">
-        <label className="text-sm font-medium text-gray-700">
-          Email Destinatario
-        </label>
-
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          className="px-3 py-2 border border-gray-300 rounded-md"
-        />
-      </div>
-
-      {/* Archivo JSON */}
-      <div className="flex flex-col gap-1">
-        <label className="text-sm font-medium text-gray-700">
-          Archivo JSON
-        </label>
-
-        <input
-          type="file"
-          id="json-file-input"
-          accept=".json"
-          onChange={handleJsonUpload}
-          className="
-            text-sm text-gray-600
-            file:mr-3 file:px-4 file:py-2
-            file:rounded-md file:border-0
-            file:bg-blue-50 file:text-blue-700
-            hover:file:bg-blue-100
-          "
-        />
-      </div>
-
-      {/* Archivo cargado */}
-      {jsonFileName && (
-        <p className="text-green-600 text-xs">
-          ✓ Archivo listo: {jsonFileName}
-        </p>
-      )}
-
-      {/* Botón */}
-      <div className="flex justify-center pt-2">
-        <button
-          type="submit"
-          disabled={loading}
-          className="
-            px-6 py-2 rounded-md font-medium text-white
-            bg-blue-600 hover:bg-blue-700
-            disabled:opacity-50 disabled:cursor-not-allowed
-            transition
-          "
-        >
-          {loading ? 'Sending...' : 'Send Email'}
-        </button>
-      </div>
-
-    </form>
-
-  </div>
-
-</div>
 
     );
 }
