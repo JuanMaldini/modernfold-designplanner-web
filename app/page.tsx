@@ -32,12 +32,12 @@ export default function Home() {
                 </button>
             </Link>
             <Link href="/partition-acousti-clear">
-                <button className="rounded bg-blue-500 px-4 py-2 font-bold text-white hover:bg-blue-700">
+                <button disabled className="rounded bg-blue-500 px-4 py-2 font-bold text-white saturate-0">
                     Acousti-Clear Partition
                 </button>
             </Link>
             <Link href="/partition-accordion">
-                <button className="rounded bg-blue-500 px-4 py-2 font-bold text-white hover:bg-blue-700">
+                <button disabled className="rounded bg-blue-500 px-4 py-2 font-bold text-white saturate-0">
                     Accordion Partition
                 </button>
             </Link>
