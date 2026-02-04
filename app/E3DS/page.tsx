@@ -2,7 +2,6 @@
 import { useRef, useEffect, useState } from "react";
 import Sidepanel from "./sidepanel/Sidepanel";
 import '@n8n/chat/dist/style.css';
-import { createChat } from '@n8n/chat';
 import Script from "next/script";
 
 function VagonPlayer() {
@@ -18,24 +17,27 @@ function VagonPlayer() {
   }, []);
 
   useEffect(() => {
-    createChat({
-      webhookUrl: 'http://localhost:5678/webhook/f4f1ffe0-dee2-472c-90d0-95ffd6919067/chat',
-      mode: 'window',
-      showWelcomeScreen: true,
-      initialMessages: [
-        'Do you need guidance to build some steps?'
-      ],
-      i18n: {
-        en: {
-          title: 'Hi there! 👋',
-          subtitle: "Start a chat. We're here to help you 24/7.",
-          footer: '',
-          getStarted: 'New Conversation',
-          inputPlaceholder: 'Type your question...',
-          closeButtonTooltip: 'Close Chat',
+    // Dynamically import createChat to avoid SSR issues during build
+    import('@n8n/chat').then(({ createChat }) => {
+      createChat({
+        webhookUrl: 'http://localhost:5678/webhook/f4f1ffe0-dee2-472c-90d0-95ffd6919067/chat',
+        mode: 'window',
+        showWelcomeScreen: true,
+        initialMessages: [
+          'Do you need guidance to build some steps?'
+        ],
+        i18n: {
+          en: {
+            title: 'Hi there! 👋',
+            subtitle: "Start a chat. We're here to help you 24/7.",
+            footer: '',
+            getStarted: 'New Conversation',
+            inputPlaceholder: 'Type your question...',
+            closeButtonTooltip: 'Close Chat',
+          },
         },
-      },
-    });
+      });
+    }).catch(err => console.error("Failed to load chat widget", err));
   }, []);
 
   return (
