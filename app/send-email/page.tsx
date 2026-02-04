@@ -2,7 +2,7 @@
 import { useState } from 'react';
 
 export default function SendEmailForm() {
-    const [email, setEmail] = useState('juanmaldini7@gmail.com');
+    const [email, setEmail] = useState('unreal@vanishingpoint3d.com');
     const [name, setName] = useState('');
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
@@ -36,7 +36,7 @@ export default function SendEmailForm() {
 
             if (response.ok) {
                 setMessage('Email enviado con éxito');
-                setEmail('juanmaldini7@gmail.com');
+                setEmail('unreal@vanishingpoint3d.com');
                 setName('');
                 setJsonData(null);
                 setJsonFileName('');
@@ -60,7 +60,6 @@ export default function SendEmailForm() {
             return;
         }
 
-        console.log('[DEBUG-CLIENT] File selected:', file.name);
 
         const reader = new FileReader();
         reader.onload = (event) => {
