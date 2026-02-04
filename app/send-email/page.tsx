@@ -129,7 +129,6 @@ export default function SendEmailForm() {
           id="json-file-input"
           accept=".json"
           onChange={handleJsonUpload}
-          required
           className="
             text-sm text-gray-600
             file:mr-3 file:px-4 file:py-2
