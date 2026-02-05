@@ -17,7 +17,7 @@ function VagonPlayer() {
   }, []);
 
   useEffect(() => {
-    // Dynamically import createChat to avoid SSR issues during build
+    // Dynamically import cr beateChat to avoid SSR issues during build
     import("@n8n/chat")
       .then(({ createChat }) => {
         const webhookUrl =

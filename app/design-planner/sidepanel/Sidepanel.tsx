@@ -21,28 +21,6 @@ export default function Sidepanel() {
   return (
     <div className="modernfold-light bg-slate-50 text-slate-800 w-full h-full overflow-y-auto">
 
-      {/*
-      <div className="mb-2">
-        <p className="text-emerald-400 text-[10px] font-mono bg-black/40 p-3  break-all">
-          <span className="text-slate-500 mr-2">STATUS:</span>
-          {lastCommand}
-        </p>
-      </div>
-
-      <div className="flex flex-col gap-3">
-        <strong className="text-white text-xs uppercase tracking-widest opacity-50">
-          Global Actions
-        </strong>
-        <button
-          type="button"
-          className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-1 rounded-lg transition-all shadow-lg shadow-emerald-900/20 active:scale-[0.98]"
-          onClick={() => handleCommand("Interaction", "ColorChange", "White")}
-        >
-          Vagon Button
-        </button>
-      </div>
-      */}
-
       <div className="mt-2 flex flex-col gap-3">
         <strong className="text-slate-600 text-center text-xs uppercase tracking-widest">
           Select Configuration
@@ -71,7 +49,6 @@ export default function Sidepanel() {
         </div>
       </div>
 
-      {/* Dynamic Container (Observer Window) */}
       <div className="pt-2">
         {activePartition ? (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
