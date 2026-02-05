@@ -1,4 +1,4 @@
-'use client';
+ 'use client';
 import { useRef, useEffect, useState } from "react";
 import Sidepanel from "./sidepanel/Sidepanel";
 import '@n8n/chat/dist/style.css';
@@ -28,8 +28,8 @@ function VagonPlayer() {
         ],
         i18n: {
           en: {
-            title: 'Hi there! 👋',
-            subtitle: "Start a chat. We're here to help you 24/7.",
+            title: 'Hello',
+            subtitle: "Need help to build your system?",
             footer: '',
             getStarted: 'New Conversation',
             inputPlaceholder: 'Type your question...',
@@ -57,7 +57,7 @@ function VagonPlayer() {
         />
       </div>
 
-      <div className="w-full md:w-1/4 h-1/2 md:h-full">
+      <div className="w-full md:w-1/2 h-1/2 md:h-full">
         <Sidepanel />
       </div>
     </div>

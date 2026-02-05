@@ -1,9 +1,21 @@
-'use client';
-import { useState } from 'react';
-import Image from 'next/image';
+"use client";
+import { useEffect, useState } from "react";
+import Image from "next/image";
 
-type DimensionMode = 'inches' | 'feet-inches' | 'metric';
-type Step = 'dimensions' | 'configuration' | 'pocket' | 'closure' | 'rails' | 'egress' | 'model' | 'track' | 'glass' | 'finish' | 'project_info' | 'summary';
+type DimensionMode = "inches" | "feet-inches" | "metric";
+type Step =
+  | "dimensions"
+  | "configuration"
+  | "pocket"
+  | "closure"
+  | "rail"
+  | "egress"
+  | "model"
+  | "track"
+  | "glass"
+  | "finish"
+  | "project_info"
+  | "summary";
 
 interface DimensionValue {
   mode: DimensionMode;
@@ -15,16 +27,15 @@ interface DimensionValue {
   millimeters?: number;
 }
 
-// Glass specific types
-type PanelConfig = 'single' | 'single-parallel';
-type PocketType = 'wtw' | 'inside' | 'outside';
-type ClosureType = 'pivot' | 'sliding';
-type RailType = 'rails' | 'patch';
-type EgressType = 'none' | 'end_pivot' | 'passdoor';
-type ModelType = 'acousti-clear' | 'hsw'; // Using Educated guesses based on "Glass" context
-type TrackType = 'standard' | 'heavy';
-type GlassType = 'clear' | 'frosted' | 'custom';
-type FinishType = 'clear_anodized' | 'bronze_anodized' | 'black_anodized' | 'white_powder' | 'custom';
+type PanelConfig = "single-panel" | "dual-panel" | "multi-panel";
+type PocketType = "wtw" | "inside" | "outside";
+type ClosureType = "pivot" | "sliding";
+type RailType = "surface" | "patch";
+type EgressType = "none" | "breakaway" | "swing";
+type ModelType = "acousti-clear" | "hsw";
+type TrackType = "standard" | "heavy";
+type GlassType = "clear" | "frosted" | "custom";
+type FinishType = "clear" | "bronze" | "black" | "satin" | "custom";
 
 interface ProjectInfo {
   projectName: string;
@@ -38,222 +49,387 @@ interface ProjectInfo {
 }
 
 export default function GlassPartition() {
-  const [currentStep, setCurrentStep] = useState<Step>('dimensions');
-  const [location, setLocation] = useState('');
-  const [width, setWidth] = useState<DimensionValue>({ mode: 'feet-inches', feet: 0, inchMain: 0, numerator: 0, denominator: 0 });
-  const [height, setHeight] = useState<DimensionValue>({ mode: 'feet-inches', feet: 0, inchMain: 0, numerator: 0, denominator: 0 });
+  const ACCENT = "emerald-500";
+  const card = "bg-transparent border border-white/5 rounded-md p-2";
+  const smallBtn = "px-3 py-2 rounded-md text-sm font-bold";
+  const STEP_ORDER: Step[] = [
+    "dimensions",
+    "configuration",
+    "pocket",
+    "closure",
+    "rail",
+    "egress",
+    "model",
+    "track",
+    "glass",
+    "finish",
+    "project_info",
+    "summary",
+  ];
 
+  const STEP_LABELS: Record<Step, string> = {
+    dimensions: "Dimensions",
+    configuration: "Configuration",
+    pocket: "Pocket",
+    closure: "Closure",
+    rail: "Rail System",
+    egress: "Egress",
+    model: "Model",
+    track: "Track",
+    glass: "Glass Type",
+    finish: "Finish",
+    project_info: "Project Info",
+    summary: "Summary",
+  };
+
+  const goToStep = (id: Step) => setCurrentStep(id);
+  const [currentStep, setCurrentStep] = useState<Step>("dimensions");
+  const [visitedSteps, setVisitedSteps] = useState<Set<Step>>(
+    () => new Set(["dimensions"]),
+  );
+  const [location, setLocation] = useState("");
+  const [width, setWidth] = useState<DimensionValue>({
+    mode: "feet-inches",
+    feet: 0,
+    inchMain: 0,
+    numerator: 0,
+    denominator: 0,
+  });
+  const [height, setHeight] = useState<DimensionValue>({
+    mode: "feet-inches",
+    feet: 0,
+    inchMain: 0,
+    numerator: 0,
+    denominator: 0,
+  });
   const [panelConfig, setPanelConfig] = useState<PanelConfig | null>(null);
-  const [pocketType, setPocketType] = useState<PocketType | null>(null);
 
-  // Placeholders for state
+  // Pocket State
+  const [pocketType, setPocketType] = useState<PocketType | null>(null);
+  const [hasPocketDoor, setHasPocketDoor] = useState(false);
+
+  // New State for Glass Hardware
   const [closure, setClosure] = useState<ClosureType | null>(null);
   const [rail, setRail] = useState<RailType | null>(null);
   const [egress, setEgress] = useState<EgressType | null>(null);
+
+  // New State for Glass Model
   const [model, setModel] = useState<ModelType | null>(null);
   const [track, setTrack] = useState<TrackType | null>(null);
-  const [glass, setGlass] = useState<GlassType | null>(null);
-  const [finish, setFinish] = useState<FinishType | null>(null);
+  const [glassType, setGlassType] = useState<GlassType | null>(null);
 
+  // New State for Aesthetics
+  const [finishType, setFinishType] = useState<FinishType | null>(null);
+
+  // New State for Project Info
   const [projectInfo, setProjectInfo] = useState<ProjectInfo>({
-    projectName: '',
-    city: '',
-    state: '',
-    zip: '',
-    architect: '',
-    contactPerson: '',
-    email: '',
-    phone: ''
+    projectName: "",
+    city: "",
+    state: "",
+    zip: "",
+    architect: "",
+    contactPerson: "",
+    email: "",
+    phone: "",
   });
 
+  // Validation function for step 1
   const validateDimensions = () => {
     if (!location.trim()) {
-      alert('Please enter a partition location.');
+      alert("Please enter a partition location.");
       return false;
     }
+
     const isValueValid = (val: DimensionValue) => {
-      if (val.mode === 'feet-inches') return (val.feet || 0) > 0 || (val.inchMain || 0) > 0;
-      if (val.mode === 'inches') return (val.inches || 0) > 0;
-      if (val.mode === 'metric') return (val.millimeters || 0) > 0;
+      if (val.mode === "feet-inches")
+        return (val.feet || 0) > 0 || (val.inchMain || 0) > 0;
+      if (val.mode === "inches") return (val.inches || 0) > 0;
+      if (val.mode === "metric") return (val.millimeters || 0) > 0;
       return false;
     };
+
     if (!isValueValid(width) || !isValueValid(height)) {
-      alert('Please enter valid dimensions for width and height.');
+      alert("Please enter valid dimensions for width and height.");
       return false;
     }
+
     return true;
   };
 
+  useEffect(() => {
+    setVisitedSteps((prev) => {
+      const next = new Set(prev);
+      next.add(currentStep);
+      return next;
+    });
+  }, [currentStep]);
+  const isDimensionsComplete = () => {
+    if (!location.trim()) return false;
+
+    const isValueValid = (val: DimensionValue) => {
+      if (val.mode === "feet-inches")
+        return (val.feet || 0) > 0 || (val.inchMain || 0) > 0;
+      if (val.mode === "inches") return (val.inches || 0) > 0;
+      if (val.mode === "metric") return (val.millimeters || 0) > 0;
+      return false;
+    };
+
+    return isValueValid(width) && isValueValid(height);
+  };
+
+  const isStepComplete = (step: Step) => {
+    if (!visitedSteps.has(step)) return false;
+    switch (step) {
+      case "dimensions":
+        return isDimensionsComplete();
+      case "configuration":
+        return !!panelConfig;
+      case "pocket":
+        return !!pocketType;
+      case "closure":
+        return !!closure;
+      case "rail":
+        return !!rail;
+      case "egress":
+        return !!egress;
+      case "model":
+        return !!model;
+      case "track":
+        return !!track;
+      case "glass":
+        return !!glassType;
+      case "finish":
+        return !!finishType;
+      case "project_info":
+        return !!projectInfo.projectName.trim() && !!projectInfo.email.trim();
+      case "summary":
+        return false;
+      default:
+        return false;
+    }
+  };
+
+  const isFormComplete = () => {
+    return STEP_ORDER.filter((step) => step !== "summary").every((step) =>
+      isStepComplete(step),
+    );
+  };
+
+  const isEmailValid = (email: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  };
+
   const handleNextStep = () => {
-    if (currentStep === 'dimensions') {
-      if (validateDimensions()) setCurrentStep('configuration');
-    } else if (currentStep === 'configuration') {
+    if (currentStep === "dimensions") {
+      if (validateDimensions()) {
+        setCurrentStep("configuration");
+      }
+    } else if (currentStep === "configuration") {
       if (!panelConfig) {
-        alert('Please select a panel configuration.');
+        alert("Please select a panel configuration.");
         return false;
       }
-      setCurrentStep('pocket');
-    } else if (currentStep === 'pocket') {
+      setCurrentStep("pocket");
+    } else if (currentStep === "pocket") {
       if (!pocketType) {
-        alert('Please select a storage condition.');
+        alert("Please select a storage condition (pocket).");
         return false;
       }
-      setCurrentStep('closure');
-    } else if (currentStep === 'closure') {
+      setCurrentStep("closure");
+    } else if (currentStep === "closure") {
       if (!closure) {
-        alert('Please select a closure method.');
+        alert("Please select a closure method.");
         return false;
       }
-      setCurrentStep('rails');
-    } else if (currentStep === 'rails') {
+      setCurrentStep("rail");
+    } else if (currentStep === "rail") {
       if (!rail) {
-        alert('Please select rails or patch fittings.');
+        alert("Please select a rail system.");
         return false;
       }
-      setCurrentStep('egress');
-    } else if (currentStep === 'egress') {
+      setCurrentStep("egress");
+    } else if (currentStep === "egress") {
       if (!egress) {
-        alert('Please select an egress option.');
+        alert("Please select an egress option.");
         return false;
       }
-      setCurrentStep('model');
-    } else if (currentStep === 'model') {
+      setCurrentStep("model");
+    } else if (currentStep === "model") {
       if (!model) {
-        alert('Please select a model.');
+        alert("Please select a glass model.");
         return false;
       }
-      setCurrentStep('track');
-    } else if (currentStep === 'track') {
+      setCurrentStep("track");
+    } else if (currentStep === "track") {
       if (!track) {
-        alert('Please select a track system.');
+        alert("Please confirm the track system.");
         return false;
       }
-      setCurrentStep('glass');
-    } else if (currentStep === 'glass') {
-      if (!glass) {
-        alert('Please select a glass option.');
+      setCurrentStep("glass");
+    } else if (currentStep === "glass") {
+      if (!glassType) {
+        alert("Please select a glass type.");
         return false;
       }
-      setCurrentStep('finish');
-    } else if (currentStep === 'finish') {
-      if (!finish) {
-        alert('Please select a finish option.');
+      setCurrentStep("finish");
+    } else if (currentStep === "finish") {
+      if (!finishType) {
+        alert("Please select a finish option.");
         return false;
       }
-      setCurrentStep('project_info');
-    } else if (currentStep === 'project_info') {
+      setCurrentStep("project_info");
+    } else if (currentStep === "project_info") {
       if (!projectInfo.projectName || !projectInfo.email) {
-        alert('Please fill in at least Project Name and Email.');
+        alert("Please enter at least the Project Name and Email.");
         return false;
       }
-      setCurrentStep('summary');
-    } else if (currentStep === 'summary') {
-      // Final submission logic could go here
-      alert('Form Submitted!');
-      resetForm();
+      setCurrentStep("summary");
     }
   };
 
   const handlePrevStep = () => {
-    if (currentStep === 'configuration') setCurrentStep('dimensions');
-    if (currentStep === 'pocket') setCurrentStep('configuration');
-    if (currentStep === 'closure') setCurrentStep('pocket');
-    if (currentStep === 'rails') setCurrentStep('closure');
-    if (currentStep === 'egress') setCurrentStep('rails');
-    if (currentStep === 'model') setCurrentStep('egress');
-    if (currentStep === 'track') setCurrentStep('model');
-    if (currentStep === 'glass') setCurrentStep('track');
-    if (currentStep === 'finish') setCurrentStep('glass');
-    if (currentStep === 'project_info') setCurrentStep('finish');
-    if (currentStep === 'summary') setCurrentStep('project_info');
+    if (currentStep === "configuration") setCurrentStep("dimensions");
+    if (currentStep === "pocket") setCurrentStep("configuration");
+    if (currentStep === "closure") setCurrentStep("pocket");
+    if (currentStep === "rail") setCurrentStep("closure");
+    if (currentStep === "egress") setCurrentStep("rail");
+    if (currentStep === "model") setCurrentStep("egress");
+    if (currentStep === "track") setCurrentStep("model");
+    if (currentStep === "glass") setCurrentStep("track");
+    if (currentStep === "finish") setCurrentStep("glass");
+    if (currentStep === "project_info") setCurrentStep("finish");
+    if (currentStep === "summary") setCurrentStep("project_info");
   };
 
   const resetForm = () => {
-    setLocation('');
-    setWidth({ mode: 'feet-inches', feet: 0, inchMain: 0, numerator: 0, denominator: 0 });
-    setHeight({ mode: 'feet-inches', feet: 0, inchMain: 0, numerator: 0, denominator: 0 });
+    setLocation("");
+    setWidth({
+      mode: "feet-inches",
+      feet: 0,
+      inchMain: 0,
+      numerator: 0,
+      denominator: 0,
+    });
+    setHeight({
+      mode: "feet-inches",
+      feet: 0,
+      inchMain: 0,
+      numerator: 0,
+      denominator: 0,
+    });
+    setPanelConfig(null);
+    setPocketType(null);
+    setHasPocketDoor(false);
     setClosure(null);
     setRail(null);
     setEgress(null);
     setModel(null);
     setTrack(null);
-    setGlass(null);
-    setFinish(null);
+    setGlassType(null);
+    setFinishType(null);
     setProjectInfo({
-      projectName: '',
-      city: '',
-      state: '',
-      zip: '',
-      architect: '',
-      contactPerson: '',
-      email: '',
-      phone: ''
+      projectName: "",
+      city: "",
+      state: "",
+      zip: "",
+      architect: "",
+      contactPerson: "",
+      email: "",
+      phone: "",
     });
-    setCurrentStep('dimensions');
+    setCurrentStep("dimensions");
   };
 
-  const renderDimensionInput = (label: string, value: DimensionValue, onChange: (val: DimensionValue) => void) => {
+  const renderDimensionInput = (
+    label: string,
+    value: DimensionValue,
+    onChange: (val: DimensionValue) => void,
+  ) => {
     return (
-      <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl transition-all hover:border-emerald-500/30 group">
-        <h3 className="text-xl font-semibold mb-4 text-emerald-400 flex items-center gap-2">
+      <div className="bg-white/5  p-2 transition-all hover:border-emerald-500/30 group">
+        <h3 className="text-md font-semibold mb-2 text-emerald-400 flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
           {label}
         </h3>
 
         <div className="flex gap-2 mb-6 bg-black/40 p-1 rounded-xl w-fit border border-white/5">
-          {(['feet-inches', 'inches', 'metric'] as DimensionMode[]).map((mode) => (
-            <button
-              key={mode}
-              onClick={() => onChange({ ...value, mode })}
-              className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${value.mode === mode
-                  ? 'bg-emerald-500 text-black shadow-lg shadow-emerald-500/20'
-                  : 'text-slate-500 hover:text-white hover:bg-white/5'
+          {(["feet-inches", "inches", "metric"] as DimensionMode[]).map(
+            (mode) => (
+              <button
+                key={mode}
+                onClick={() => onChange({ ...value, mode })}
+                className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
+                  value.mode === mode
+                    ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/20"
+                    : "text-slate-500 hover:text-white hover:bg-white/5"
                 }`}
-            >
-              {mode === 'feet-inches' ? 'Ft & In' : mode === 'inches' ? 'Inches' : 'Metric'}
-            </button>
-          ))}
+              >
+                {mode === "feet-inches"
+                  ? "Ft & In"
+                  : mode === "inches"
+                    ? "Inches"
+                    : "Metric"}
+              </button>
+            ),
+          )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
-          {value.mode === 'feet-inches' && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 animate-in fade-in slide-in-from-bottom-2 duration-500">
+          {value.mode === "feet-inches" && (
             <>
               <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] ml-1">Feet</label>
+                <label className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] ml-1">
+                  Feet
+                </label>
                 <input
                   type="number"
-                  defaultValue={value.feet || ''}
-                  onBlur={(e) => onChange({ ...value, feet: Number(e.target.value) })}
-                  className="bg-black/60 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all font-mono"
+                  defaultValue={value.feet || ""}
+                  onBlur={(e) =>
+                    onChange({ ...value, feet: Number(e.target.value) })
+                  }
+                  className="bg-black/60 border border-white/10 rounded-md px-2 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all font-mono text-sm"
                   placeholder="0"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] ml-1">Inches</label>
+                <label className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] ml-1">
+                  Inches
+                </label>
                 <input
                   type="number"
-                  defaultValue={value.inchMain || ''}
-                  onBlur={(e) => onChange({ ...value, inchMain: Number(e.target.value) })}
-                  className="bg-black/60 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all font-mono"
+                  defaultValue={value.inchMain || ""}
+                  onBlur={(e) =>
+                    onChange({ ...value, inchMain: Number(e.target.value) })
+                  }
+                  className="bg-black/60 border border-white/10 rounded-md px-2 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all font-mono text-sm"
                   placeholder="0"
                 />
               </div>
               <div className="flex flex-col gap-1.5 md:col-span-2">
-                <label className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] ml-1">Fraction</label>
+                <label className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] ml-1">
+                  Fraction
+                </label>
                 <div className="flex items-center gap-2">
                   <input
                     type="number"
-                    defaultValue={value.numerator || ''}
-                    onBlur={(e) => onChange({ ...value, numerator: Number(e.target.value) })}
-                    className="bg-black/60 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all w-full font-mono text-center"
+                    defaultValue={value.numerator || ""}
+                    onBlur={(e) =>
+                      onChange({ ...value, numerator: Number(e.target.value) })
+                    }
+                    className="bg-black/60 border border-white/10 rounded-md px-2 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all w-full font-mono text-center text-sm"
                     placeholder="Num"
                   />
                   <span className="text-white/20 font-light text-2xl">/</span>
                   <input
                     type="number"
-                    defaultValue={value.denominator || ''}
-                    onBlur={(e) => onChange({ ...value, denominator: Number(e.target.value) })}
-                    className="bg-black/60 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all w-full font-mono text-center"
+                    defaultValue={value.denominator || ""}
+                    onBlur={(e) =>
+                      onChange({
+                        ...value,
+                        denominator: Number(e.target.value),
+                      })
+                    }
+                    className="bg-black/60 border border-white/10 rounded-md px-2 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all w-full font-mono text-center text-sm"
                     placeholder="Den"
                   />
                 </div>
@@ -261,29 +437,37 @@ export default function GlassPartition() {
             </>
           )}
 
-          {value.mode === 'inches' && (
+          {value.mode === "inches" && (
             <div className="flex flex-col gap-1.5 col-span-4">
-              <label className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] ml-1">Total Inches</label>
+              <label className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] ml-1">
+                Total Inches
+              </label>
               <input
                 type="number"
                 step="0.01"
-                defaultValue={value.inches || ''}
-                onBlur={(e) => onChange({ ...value, inches: Number(e.target.value) })}
-                className="bg-black/60 border border-white/10 rounded-xl px-6 py-3 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all font-mono text-xl"
+                defaultValue={value.inches || ""}
+                onBlur={(e) =>
+                  onChange({ ...value, inches: Number(e.target.value) })
+                }
+                className="bg-black/60 border border-white/10 rounded-md px-2 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all font-mono text-sm"
                 placeholder="0.00"
               />
             </div>
           )}
 
-          {value.mode === 'metric' && (
+          {value.mode === "metric" && (
             <div className="flex flex-col gap-1.5 col-span-4">
-              <label className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] ml-1">Millimeters (mm)</label>
+              <label className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] ml-1">
+                Millimeters (mm)
+              </label>
               <input
                 type="number"
                 step="0.1"
-                defaultValue={value.millimeters || ''}
-                onBlur={(e) => onChange({ ...value, millimeters: Number(e.target.value) })}
-                className="bg-black/60 border border-white/10 rounded-xl px-6 py-3 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all font-mono text-xl"
+                defaultValue={value.millimeters || ""}
+                onBlur={(e) =>
+                  onChange({ ...value, millimeters: Number(e.target.value) })
+                }
+                className="bg-black/60 border border-white/10 rounded-md px-2 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all font-mono text-sm"
                 placeholder="0.0"
               />
             </div>
@@ -296,44 +480,79 @@ export default function GlassPartition() {
   const renderConfigurationStep = () => {
     const options = [
       {
-        id: 'single' as PanelConfig,
-        title: 'Single Panel 90° Side Stack',
-        description: 'Panels move one at a time. Ideal for simple layouts.',
+        id: "single-panel" as PanelConfig,
+        title: "Single Panel",
+        description:
+          "Individual glass panel configuration. Ideal for simple openings and minimalist designs.",
+        app: "Conference rooms, Office partitions, Private spaces.",
       },
       {
-        id: 'single-parallel' as PanelConfig,
-        title: 'Single Panel Parallel Stack',
-        description: 'Panels move one at a time and stack parallel to track run.',
-      }
+        id: "dual-panel" as PanelConfig,
+        title: "Dual Panel",
+        description:
+          "Two panel system with coordinated operation. Perfect for medium-sized openings requiring flexibility.",
+        app: "Meeting rooms, Breakout spaces, Collaborative areas.",
+      },
+      {
+        id: "multi-panel" as PanelConfig,
+        title: "Multi-Panel",
+        description:
+          "Three or more panels for large openings. Maximum flexibility for space division.",
+        app: "Ballrooms, Large conference halls, Multipurpose spaces.",
+      },
     ];
 
     return (
-      <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-xl mb-8">
-          <h2 className="text-2xl font-bold text-white mb-2">Select Configuration</h2>
-          <p className="text-slate-400 text-sm">Choose the operational mode for the glass partition.</p>
+      <div className="space-y-3 animate-in fade-in slide-in-from-right-4 duration-500">
+        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-sm mb-2">
+          <h2 className="text-2xl font-bold text-white mb-2">
+            Select Panel Configuration
+          </h2>
+          <p className="text-slate-400 text-sm">
+            Choose the operational mode that best fits your space requirements.
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 gap-2">
           {options.map((opt) => (
             <button
               key={opt.id}
               onClick={() => setPanelConfig(opt.id)}
-              className={`text-left p-6 rounded-2xl border transition-all ${panelConfig === opt.id
-                  ? 'bg-emerald-500/10 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.1)]'
-                  : 'bg-white/5 border-white/10 hover:border-white/20'
-                }`}
+              className={`text-left p-2 rounded-2xl border transition-all ${
+                panelConfig === opt.id
+                  ? "bg-emerald-500/10 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.1)]"
+                  : "bg-white/5 border-white/10 hover:border-white/20"
+              }`}
             >
-              <div className="flex justify-between items-start mb-4">
-                <h3 className={`text-xl font-bold ${panelConfig === opt.id ? 'text-emerald-400' : 'text-white'}`}>
+              <div className="flex justify-between items-start mb-2">
+                <h3
+                  className={`text-xl font-bold ${panelConfig === opt.id ? "text-emerald-400" : "text-white"}`}
+                >
                   {opt.title}
                 </h3>
-                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${panelConfig === opt.id ? 'border-emerald-500 bg-emerald-500' : 'border-white/20'
-                  }`}>
-                  {panelConfig === opt.id && <div className="w-2 h-2 bg-black rounded-full" />}
+                <div
+                  className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                    panelConfig === opt.id
+                      ? "border-emerald-500 bg-emerald-500"
+                      : "border-white/20"
+                  }`}
+                >
+                  {panelConfig === opt.id && (
+                    <div className="w-2 h-2 bg-black rounded-full" />
+                  )}
                 </div>
               </div>
-              <p className="text-slate-400 text-sm mb-4 leading-relaxed">{opt.description}</p>
+              <p className="text-slate-400 text-sm mb-2 leading-relaxed">
+                {opt.description}
+              </p>
+              <div className="pt-2 border-t border-white/5">
+                <span className="text-[10px] text-slate-500 uppercase font-black tracking-widest block mb-1">
+                  Common Applications
+                </span>
+                <span className="text-xs text-slate-300 font-medium">
+                  {opt.app}
+                </span>
+              </div>
             </button>
           ))}
         </div>
@@ -344,50 +563,102 @@ export default function GlassPartition() {
   const renderPocketStep = () => {
     const options = [
       {
-        id: 'wtw' as PocketType,
-        title: 'Wall to Wall',
-        description: 'No pocket. Panels stack against the wall within the room.',
+        id: "wtw" as PocketType,
+        title: "Wall to Wall",
+        description:
+          "No pocket. Panels stack against the wall within the room.",
+        allowDoor: false,
       },
       {
-        id: 'inside' as PocketType,
-        title: 'Pocket Inside Room',
-        description: 'Storage pocket constructed within the room boundaries.',
+        id: "inside" as PocketType,
+        title: "Pocket Inside Room",
+        description: "Storage pocket constructed within the room boundaries.",
+        allowDoor: true,
       },
       {
-        id: 'outside' as PocketType,
-        title: 'Pocket Outside Room',
-        description: 'Storage pocket constructed outside the room boundaries (remote).',
-      }
+        id: "outside" as PocketType,
+        title: "Pocket Outside Room",
+        description:
+          "Storage pocket constructed outside the room boundaries (remote).",
+        allowDoor: true,
+      },
     ];
 
     return (
-      <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-xl mb-8">
-          <h2 className="text-2xl font-bold text-white mb-2">Select Storage Condition</h2>
-          <p className="text-slate-400 text-sm">Define how and where the panels will be stored when not in use.</p>
+      <div className="space-y-3 animate-in fade-in slide-in-from-right-4 duration-500">
+        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-sm mb-2">
+          <h2 className="text-2xl font-bold text-white mb-2">
+            Select Storage Condition
+          </h2>
+          <p className="text-slate-400 text-sm">
+            Define how and where the panels will be stored when not in use.
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 gap-2">
           {options.map((opt) => (
-            <button
+            <div
               key={opt.id}
-              onClick={() => setPocketType(opt.id)}
-              className={`text-left p-6 rounded-2xl border transition-all ${pocketType === opt.id
-                  ? 'bg-emerald-500/10 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.1)]'
-                  : 'bg-white/5 border-white/10 hover:border-white/20'
-                }`}
+              className={`relative rounded-2xl border transition-all ${
+                pocketType === opt.id
+                  ? "bg-emerald-500/10 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.1)]"
+                  : "bg-white/5 border-white/10 hover:border-white/20"
+              }`}
             >
-              <div className="flex justify-between items-start mb-2">
-                <h3 className={`text-xl font-bold ${pocketType === opt.id ? 'text-emerald-400' : 'text-white'}`}>
-                  {opt.title}
-                </h3>
-                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${pocketType === opt.id ? 'border-emerald-500 bg-emerald-500' : 'border-white/20'
-                  }`}>
-                  {pocketType === opt.id && <div className="w-2 h-2 bg-black rounded-full" />}
+              <button
+                onClick={() => {
+                  setPocketType(opt.id);
+                  if (!opt.allowDoor) setHasPocketDoor(false);
+                }}
+                className="w-full text-left p-2"
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <h3
+                    className={`text-xl font-bold ${pocketType === opt.id ? "text-emerald-400" : "text-white"}`}
+                  >
+                    {opt.title}
+                  </h3>
+                  <div
+                    className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                      pocketType === opt.id
+                        ? "border-emerald-500 bg-emerald-500"
+                        : "border-white/20"
+                    }`}
+                  >
+                    {pocketType === opt.id && (
+                      <div className="w-2 h-2 bg-black rounded-full" />
+                    )}
+                  </div>
                 </div>
-              </div>
-              <p className="text-slate-400 text-sm leading-relaxed">{opt.description}</p>
-            </button>
+                <p className="text-slate-400 text-sm leading-relaxed">
+                  {opt.description}
+                </p>
+              </button>
+
+              {/* Pocket Door Toggle */}
+              {opt.allowDoor && pocketType === opt.id && (
+                <div className="mx-4 mb-2 pt-2 border-t border-white/10 animate-in slide-in-from-top-2 duration-300">
+                  <label className="flex items-center gap-2 cursor-pointer group">
+                    <div
+                      className={`w-12 h-7 rounded-full transition-colors relative ${hasPocketDoor ? "bg-emerald-500" : "bg-slate-700"}`}
+                    >
+                      <input
+                        type="checkbox"
+                        className="sr-only"
+                        checked={hasPocketDoor}
+                        onChange={(e) => setHasPocketDoor(e.target.checked)}
+                      />
+                      <div
+                        className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-transform shadow-md ${hasPocketDoor ? "left-[22px]" : "left-1"}`}
+                      />
+                    </div>
+                    <span className="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors">
+                      Include Pocket Door
+                    </span>
+                  </label>
+                </div>
+              )}
+            </div>
           ))}
         </div>
       </div>
@@ -397,44 +668,62 @@ export default function GlassPartition() {
   const renderClosureStep = () => {
     const options = [
       {
-        id: 'pivot' as ClosureType,
-        title: 'Pivot Panel',
-        description: 'Closure panel swings around. Can also be used as a pass door.',
+        id: "pivot" as ClosureType,
+        title: "Pivot Closure",
+        description:
+          "Panel pivots on center or offset axis. Provides elegant entry and exit points.",
       },
       {
-        id: 'sliding' as ClosureType,
-        title: 'Sliding Panel',
-        description: 'Closure panel closes to the face of the pocket.',
-      }
+        id: "sliding" as ClosureType,
+        title: "Sliding Closure",
+        description:
+          "Panel slides along track system. Ideal for space-efficient operation.",
+      },
     ];
 
     return (
-      <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-xl mb-8">
-          <h2 className="text-2xl font-bold text-white mb-2">Select Closure Method</h2>
-          <p className="text-slate-400 text-sm">Choose how the system terminates and locks.</p>
+      <div className="space-y-3 animate-in fade-in slide-in-from-right-4 duration-500">
+        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-sm mb-2">
+          <h2 className="text-2xl font-bold text-white mb-2">
+            Select Closure Method
+          </h2>
+          <p className="text-slate-400 text-sm">
+            Choose how the final panel closes the opening.
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 gap-2">
           {options.map((opt) => (
             <button
               key={opt.id}
               onClick={() => setClosure(opt.id)}
-              className={`text-left p-6 rounded-2xl border transition-all ${closure === opt.id
-                  ? 'bg-emerald-500/10 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.1)]'
-                  : 'bg-white/5 border-white/10 hover:border-white/20'
-                }`}
+              className={`text-left p-2 rounded-2xl border transition-all ${
+                closure === opt.id
+                  ? "bg-emerald-500/10 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.1)]"
+                  : "bg-white/5 border-white/10 hover:border-white/20"
+              }`}
             >
               <div className="flex justify-between items-start mb-2">
-                <h3 className={`text-xl font-bold ${closure === opt.id ? 'text-emerald-400' : 'text-white'}`}>
+                <h3
+                  className={`text-xl font-bold ${closure === opt.id ? "text-emerald-400" : "text-white"}`}
+                >
                   {opt.title}
                 </h3>
-                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${closure === opt.id ? 'border-emerald-500 bg-emerald-500' : 'border-white/20'
-                  }`}>
-                  {closure === opt.id && <div className="w-2 h-2 bg-black rounded-full" />}
+                <div
+                  className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                    closure === opt.id
+                      ? "border-emerald-500 bg-emerald-500"
+                      : "border-white/20"
+                  }`}
+                >
+                  {closure === opt.id && (
+                    <div className="w-2 h-2 bg-black rounded-full" />
+                  )}
                 </div>
               </div>
-              <p className="text-slate-400 text-sm leading-relaxed">{opt.description}</p>
+              <p className="text-slate-400 text-sm leading-relaxed">
+                {opt.description}
+              </p>
             </button>
           ))}
         </div>
@@ -442,47 +731,63 @@ export default function GlassPartition() {
     );
   };
 
-  const renderRailsStep = () => {
+  const renderRailStep = () => {
     const options = [
       {
-        id: 'rails' as RailType,
-        title: 'Horizontal Rails',
-        description: 'Complete range of top and bottom rails. Meets ADA requirements. Multiple finish options.',
+        id: "surface" as RailType,
+        title: "Surface Rails",
+        description:
+          "Traditional overhead track system. Visible hardware with robust support.",
       },
       {
-        id: 'patch' as RailType,
-        title: 'Patch Fittings',
-        description: 'Flush-mounted singlepoint fittings for an elegant all-glass appearance.',
-      }
+        id: "patch" as RailType,
+        title: "Patch Fittings",
+        description:
+          "Minimalist point-fixed system. Nearly invisible hardware for modern aesthetics.",
+      },
     ];
 
     return (
-      <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-xl mb-8">
-          <h2 className="text-2xl font-bold text-white mb-2">Rails or Patch Fittings</h2>
-          <p className="text-slate-400 text-sm">Select the hardware style for the glass panels.</p>
+      <div className="space-y-3 animate-in fade-in slide-in-from-right-4 duration-500">
+        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-sm mb-2">
+          <h2 className="text-2xl font-bold text-white mb-2">Rail System</h2>
+          <p className="text-slate-400 text-sm">
+            Select the mounting and support system for the glass panels.
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 gap-2">
           {options.map((opt) => (
             <button
               key={opt.id}
               onClick={() => setRail(opt.id)}
-              className={`text-left p-6 rounded-2xl border transition-all ${rail === opt.id
-                  ? 'bg-emerald-500/10 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.1)]'
-                  : 'bg-white/5 border-white/10 hover:border-white/20'
-                }`}
+              className={`text-left p-2 rounded-2xl border transition-all ${
+                rail === opt.id
+                  ? "bg-emerald-500/10 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.1)]"
+                  : "bg-white/5 border-white/10 hover:border-white/20"
+              }`}
             >
               <div className="flex justify-between items-start mb-2">
-                <h3 className={`text-xl font-bold ${rail === opt.id ? 'text-emerald-400' : 'text-white'}`}>
+                <h3
+                  className={`text-xl font-bold ${rail === opt.id ? "text-emerald-400" : "text-white"}`}
+                >
                   {opt.title}
                 </h3>
-                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${rail === opt.id ? 'border-emerald-500 bg-emerald-500' : 'border-white/20'
-                  }`}>
-                  {rail === opt.id && <div className="w-2 h-2 bg-black rounded-full" />}
+                <div
+                  className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                    rail === opt.id
+                      ? "border-emerald-500 bg-emerald-500"
+                      : "border-white/20"
+                  }`}
+                >
+                  {rail === opt.id && (
+                    <div className="w-2 h-2 bg-black rounded-full" />
+                  )}
                 </div>
               </div>
-              <p className="text-slate-400 text-sm leading-relaxed">{opt.description}</p>
+              <p className="text-slate-400 text-sm leading-relaxed">
+                {opt.description}
+              </p>
             </button>
           ))}
         </div>
@@ -493,49 +798,66 @@ export default function GlassPartition() {
   const renderEgressStep = () => {
     const options = [
       {
-        id: 'none' as EgressType,
-        title: 'None',
-        description: 'No egress option required.',
+        id: "none" as EgressType,
+        title: "No Egress",
+        description:
+          "Standard fixed panel installation with no emergency exit.",
       },
       {
-        id: 'end_pivot' as EgressType,
-        title: 'End Pivot Panel',
-        description: 'Fixed panel, provides final closure method as well as door option when optional push & pull handles are selected.',
+        id: "breakaway" as EgressType,
+        title: "Breakaway",
+        description:
+          "Panels release from track under pressure for emergency egress.",
       },
       {
-        id: 'passdoor' as EgressType,
-        title: 'Passdoor',
-        description: 'Single or optional double passdoor. Available with multiple door handle hardware options.',
-      }
+        id: "swing" as EgressType,
+        title: "Swing Door",
+        description:
+          "Dedicated swing door panel for code-compliant emergency exit.",
+      },
     ];
 
     return (
-      <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-xl mb-8">
-          <h2 className="text-2xl font-bold text-white mb-2">Egress Options</h2>
-          <p className="text-slate-400 text-sm">Select passage options for the partition.</p>
+      <div className="space-y-3 animate-in fade-in slide-in-from-right-4 duration-500">
+        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-sm mb-2">
+          <h2 className="text-2xl font-bold text-white mb-2">Egress Option</h2>
+          <p className="text-slate-400 text-sm">
+            Select emergency exit requirements for the installation.
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 gap-2">
           {options.map((opt) => (
             <button
               key={opt.id}
               onClick={() => setEgress(opt.id)}
-              className={`text-left p-6 rounded-2xl border transition-all ${egress === opt.id
-                  ? 'bg-emerald-500/10 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.1)]'
-                  : 'bg-white/5 border-white/10 hover:border-white/20'
-                }`}
+              className={`text-left p-2 rounded-2xl border transition-all ${
+                egress === opt.id
+                  ? "bg-emerald-500/10 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.1)]"
+                  : "bg-white/5 border-white/10 hover:border-white/20"
+              }`}
             >
               <div className="flex justify-between items-start mb-2">
-                <h3 className={`text-xl font-bold ${egress === opt.id ? 'text-emerald-400' : 'text-white'}`}>
+                <h3
+                  className={`text-xl font-bold ${egress === opt.id ? "text-emerald-400" : "text-white"}`}
+                >
                   {opt.title}
                 </h3>
-                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${egress === opt.id ? 'border-emerald-500 bg-emerald-500' : 'border-white/20'
-                  }`}>
-                  {egress === opt.id && <div className="w-2 h-2 bg-black rounded-full" />}
+                <div
+                  className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                    egress === opt.id
+                      ? "border-emerald-500 bg-emerald-500"
+                      : "border-white/20"
+                  }`}
+                >
+                  {egress === opt.id && (
+                    <div className="w-2 h-2 bg-black rounded-full" />
+                  )}
                 </div>
               </div>
-              <p className="text-slate-400 text-sm leading-relaxed">{opt.description}</p>
+              <p className="text-slate-400 text-sm leading-relaxed">
+                {opt.description}
+              </p>
             </button>
           ))}
         </div>
@@ -543,49 +865,75 @@ export default function GlassPartition() {
     );
   };
 
-
-
   const renderModelStep = () => {
     const options = [
       {
-        id: 'acousti-clear' as ModelType,
-        title: 'Acousti-Clear®',
-        description: 'Modern, high-STC glass wall systems.',
+        id: "acousti-clear" as ModelType,
+        title: "Acousti-Clear",
+        description:
+          "Acoustic glass panel system. Provides sound control with visual transparency.",
+        app: "Conference rooms, Huddle spaces, Executive offices.",
       },
       {
-        id: 'hsw' as ModelType,
-        title: 'HSW Systems',
-        description: 'Horizontal Sliding Walls for versatile space configuration.',
-      }
+        id: "hsw" as ModelType,
+        title: "HSW Glass Wall",
+        description:
+          "Heavy-duty glass wall system. Maximum structural integrity for large spans.",
+        app: "Lobbies, Atriums, High-traffic areas.",
+      },
     ];
 
     return (
-      <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-xl mb-8">
-          <h2 className="text-2xl font-bold text-white mb-2">Select Model</h2>
-          <p className="text-slate-400 text-sm">Choose the specific product line.</p>
+      <div className="space-y-3 animate-in fade-in slide-in-from-right-4 duration-500">
+        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-sm mb-2">
+          <h2 className="text-2xl font-bold text-white mb-2">
+            Select Glass Model
+          </h2>
+          <p className="text-slate-400 text-sm">
+            Choose the glass partition system type.
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 gap-2">
           {options.map((opt) => (
             <button
               key={opt.id}
               onClick={() => setModel(opt.id)}
-              className={`text-left p-6 rounded-2xl border transition-all ${model === opt.id
-                  ? 'bg-emerald-500/10 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.1)]'
-                  : 'bg-white/5 border-white/10 hover:border-white/20'
-                }`}
+              className={`text-left p-2 rounded-2xl border transition-all ${
+                model === opt.id
+                  ? "bg-emerald-500/10 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.1)]"
+                  : "bg-white/5 border-white/10 hover:border-white/20"
+              }`}
             >
               <div className="flex justify-between items-start mb-2">
-                <h3 className={`text-xl font-bold ${model === opt.id ? 'text-emerald-400' : 'text-white'}`}>
+                <h3
+                  className={`text-xl font-bold ${model === opt.id ? "text-emerald-400" : "text-white"}`}
+                >
                   {opt.title}
                 </h3>
-                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${model === opt.id ? 'border-emerald-500 bg-emerald-500' : 'border-white/20'
-                  }`}>
-                  {model === opt.id && <div className="w-2 h-2 bg-black rounded-full" />}
+                <div
+                  className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                    model === opt.id
+                      ? "border-emerald-500 bg-emerald-500"
+                      : "border-white/20"
+                  }`}
+                >
+                  {model === opt.id && (
+                    <div className="w-2 h-2 bg-black rounded-full" />
+                  )}
                 </div>
               </div>
-              <p className="text-slate-400 text-sm leading-relaxed">{opt.description}</p>
+              <p className="text-slate-400 text-sm mb-2 leading-relaxed">
+                {opt.description}
+              </p>
+              <div className="pt-2 border-t border-white/5">
+                <span className="text-[10px] text-slate-500 uppercase font-black tracking-widest block mb-1">
+                  Applications
+                </span>
+                <span className="text-xs text-slate-300 font-medium">
+                  {opt.app}
+                </span>
+              </div>
             </button>
           ))}
         </div>
@@ -596,43 +944,60 @@ export default function GlassPartition() {
   const renderTrackStep = () => {
     const options = [
       {
-        id: 'standard' as TrackType,
-        title: 'Standard Track',
-        description: 'Durable aluminum track for standard applications.',
+        id: "standard" as TrackType,
+        title: "Standard Track",
+        description:
+          "Standard aluminum track system for typical glass panel weights.",
       },
       {
-        id: 'heavy' as TrackType,
-        title: 'Heavy Duty Track',
-        description: 'Reinforced track system for taller or heavier panels.',
-      }
+        id: "heavy" as TrackType,
+        title: "Heavy Duty Track",
+        description:
+          "Reinforced track system for larger, heavier glass panels.",
+      },
     ];
 
     return (
-      <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-xl mb-8">
-          <h2 className="text-2xl font-bold text-white mb-2">Select Track System</h2>
-          <p className="text-slate-400 text-sm">Choose the suspension system.</p>
+      <div className="space-y-3 animate-in fade-in slide-in-from-right-4 duration-500">
+        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-sm mb-2">
+          <h2 className="text-2xl font-bold text-white mb-2">Track System</h2>
+          <p className="text-slate-400 text-sm">
+            Select the suspension system suitable for your configuration.
+          </p>
         </div>
-        <div className="grid grid-cols-1 gap-4">
+
+        <div className="grid grid-cols-1 gap-2">
           {options.map((opt) => (
             <button
               key={opt.id}
               onClick={() => setTrack(opt.id)}
-              className={`text-left p-6 rounded-2xl border transition-all ${track === opt.id
-                  ? 'bg-emerald-500/10 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.1)]'
-                  : 'bg-white/5 border-white/10 hover:border-white/20'
-                }`}
+              className={`text-left p-2 rounded-2xl border transition-all ${
+                track === opt.id
+                  ? "bg-emerald-500/10 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.1)]"
+                  : "bg-white/5 border-white/10 hover:border-white/20"
+              }`}
             >
               <div className="flex justify-between items-start mb-2">
-                <h3 className={`text-xl font-bold ${track === opt.id ? 'text-emerald-400' : 'text-white'}`}>
+                <h3
+                  className={`text-xl font-bold ${track === opt.id ? "text-emerald-400" : "text-white"}`}
+                >
                   {opt.title}
                 </h3>
-                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${track === opt.id ? 'border-emerald-500 bg-emerald-500' : 'border-white/20'
-                  }`}>
-                  {track === opt.id && <div className="w-2 h-2 bg-black rounded-full" />}
+                <div
+                  className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                    track === opt.id
+                      ? "border-emerald-500 bg-emerald-500"
+                      : "border-white/20"
+                  }`}
+                >
+                  {track === opt.id && (
+                    <div className="w-2 h-2 bg-black rounded-full" />
+                  )}
                 </div>
               </div>
-              <p className="text-slate-400 text-sm leading-relaxed">{opt.description}</p>
+              <p className="text-slate-400 text-sm leading-relaxed">
+                {opt.description}
+              </p>
             </button>
           ))}
         </div>
@@ -643,48 +1008,62 @@ export default function GlassPartition() {
   const renderGlassStep = () => {
     const options = [
       {
-        id: 'clear' as GlassType,
-        title: 'Clear',
-        description: 'Standard clear tempered glass.',
+        id: "clear" as GlassType,
+        title: "Clear Glass",
+        description: "Standard transparent glass. Maximum light transmission.",
       },
       {
-        id: 'frosted' as GlassType,
-        title: 'Frosted / Etched',
-        description: 'Satin finish or etched design for privacy.',
+        id: "frosted" as GlassType,
+        title: "Frosted Glass",
+        description:
+          "Translucent finish. Provides privacy while allowing light.",
       },
       {
-        id: 'custom' as GlassType,
-        title: 'Custom Glass Solutions',
-        description: 'Contact Modernfold distributor for custom options.',
-      }
+        id: "custom" as GlassType,
+        title: "Custom Glass",
+        description: "Tinted, patterned, or specialty glass options available.",
+      },
     ];
 
     return (
-      <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-xl mb-8">
-          <h2 className="text-2xl font-bold text-white mb-2">Select Glass Option</h2>
-          <p className="text-slate-400 text-sm">Choose the glass transparency and style.</p>
+      <div className="space-y-3 animate-in fade-in slide-in-from-right-4 duration-500">
+        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-sm mb-2">
+          <h2 className="text-2xl font-bold text-white mb-2">Glass Type</h2>
+          <p className="text-slate-400 text-sm">
+            Select the glass transparency and finish.
+          </p>
         </div>
-        <div className="grid grid-cols-1 gap-4">
+
+        <div className="grid grid-cols-1 gap-2">
           {options.map((opt) => (
             <button
               key={opt.id}
-              onClick={() => setGlass(opt.id)}
-              className={`text-left p-6 rounded-2xl border transition-all ${glass === opt.id
-                  ? 'bg-emerald-500/10 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.1)]'
-                  : 'bg-white/5 border-white/10 hover:border-white/20'
-                }`}
+              onClick={() => setGlassType(opt.id)}
+              className={`text-left p-2 rounded-xl border transition-all flex items-center justify-between group ${
+                glassType === opt.id
+                  ? "bg-emerald-500/10 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.1)]"
+                  : "bg-white/5 border-white/10 hover:border-white/20"
+              }`}
             >
-              <div className="flex justify-between items-start mb-2">
-                <h3 className={`text-xl font-bold ${glass === opt.id ? 'text-emerald-400' : 'text-white'}`}>
+              <div>
+                <h3
+                  className={`font-bold ${glassType === opt.id ? "text-emerald-400" : "text-white"}`}
+                >
                   {opt.title}
                 </h3>
-                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${glass === opt.id ? 'border-emerald-500 bg-emerald-500' : 'border-white/20'
-                  }`}>
-                  {glass === opt.id && <div className="w-2 h-2 bg-black rounded-full" />}
-                </div>
+                <p className="text-slate-500 text-xs mt-1">{opt.description}</p>
               </div>
-              <p className="text-slate-400 text-sm leading-relaxed">{opt.description}</p>
+              <div
+                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                  glassType === opt.id
+                    ? "border-emerald-500 bg-emerald-500"
+                    : "border-white/20"
+                }`}
+              >
+                {glassType === opt.id && (
+                  <div className="w-1.5 h-1.5 bg-black rounded-full" />
+                )}
+              </div>
             </button>
           ))}
         </div>
@@ -694,36 +1073,74 @@ export default function GlassPartition() {
 
   const renderFinishStep = () => {
     const options = [
-      { id: 'clear_anodized' as FinishType, title: 'Clear Anodized', color: '#e2e2e2' },
-      { id: 'bronze_anodized' as FinishType, title: 'Bronze Anodized', color: '#cd7f32' },
-      { id: 'black_anodized' as FinishType, title: 'Black Anodized', color: '#000000' },
-      { id: 'white_powder' as FinishType, title: 'White Powder Coat', color: '#ffffff' },
-      { id: 'custom' as FinishType, title: 'Custom Color', color: 'linear-gradient(45deg, #ff0000, #00ff00, #0000ff)' }
+      {
+        id: "clear" as FinishType,
+        title: "Clear Anodized",
+        description: "Natural aluminum finish with protective coating.",
+      },
+      {
+        id: "bronze" as FinishType,
+        title: "Bronze Anodized",
+        description: "Warm bronze tone for traditional aesthetics.",
+      },
+      {
+        id: "black" as FinishType,
+        title: "Black Anodized",
+        description: "Modern matte black finish for contemporary spaces.",
+      },
+      {
+        id: "satin" as FinishType,
+        title: "Satin Stainless",
+        description: "Brushed stainless steel appearance.",
+      },
+      {
+        id: "custom" as FinishType,
+        title: "Custom Finish",
+        description: "Powder-coated or specialty finishes available.",
+      },
     ];
 
     return (
-      <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-xl mb-8">
-          <h2 className="text-2xl font-bold text-white mb-2">Rail Finish</h2>
-          <p className="text-slate-400 text-sm">Select the finish for the top and bottom rails.</p>
+      <div className="space-y-3 animate-in fade-in slide-in-from-right-4 duration-500">
+        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-sm mb-2">
+          <h2 className="text-2xl font-bold text-white mb-2">
+            Hardware Finish
+          </h2>
+          <p className="text-slate-400 text-sm">
+            Select the finish for all metal components.
+          </p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+        <div className="grid grid-cols-1 gap-2">
           {options.map((opt) => (
             <button
               key={opt.id}
-              onClick={() => setFinish(opt.id)}
-              className={`flex items-center gap-4 p-4 rounded-xl border transition-all ${finish === opt.id
-                  ? 'bg-emerald-500/10 border-emerald-500'
-                  : 'bg-white/5 border-white/10 hover:border-white/20'
-                }`}
+              onClick={() => setFinishType(opt.id)}
+              className={`text-left p-2 rounded-xl border transition-all flex items-center justify-between group ${
+                finishType === opt.id
+                  ? "bg-emerald-500/10 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.1)]"
+                  : "bg-white/5 border-white/10 hover:border-white/20"
+              }`}
             >
+              <div>
+                <h3
+                  className={`font-bold ${finishType === opt.id ? "text-emerald-400" : "text-white"}`}
+                >
+                  {opt.title}
+                </h3>
+                <p className="text-slate-500 text-xs mt-1">{opt.description}</p>
+              </div>
               <div
-                className="w-12 h-12 rounded-full border border-white/20 shadow-lg"
-                style={{ background: opt.color }}
-              />
-              <span className={`font-bold ${finish === opt.id ? 'text-emerald-400' : 'text-white'}`}>
-                {opt.title}
-              </span>
+                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                  finishType === opt.id
+                    ? "border-emerald-500 bg-emerald-500"
+                    : "border-white/20"
+                }`}
+              >
+                {finishType === opt.id && (
+                  <div className="w-1.5 h-1.5 bg-black rounded-full" />
+                )}
+              </div>
             </button>
           ))}
         </div>
@@ -733,82 +1150,130 @@ export default function GlassPartition() {
 
   const renderProjectInfoStep = () => {
     return (
-      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-xl mb-8">
-          <h2 className="text-2xl font-bold text-white mb-2">Project Information</h2>
-          <p className="text-slate-400 text-sm">Please provide details about the project.</p>
+      <div className="space-y-3 animate-in fade-in slide-in-from-right-4 duration-500">
+        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-sm mb-2">
+          <h2 className="text-2xl font-bold text-white mb-2">
+            Project Information
+          </h2>
+          <p className="text-slate-400 text-sm">
+            Please provide details about the project.
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {[
-            { key: 'projectName', label: 'Project Name' },
-            { key: 'city', label: 'City' },
-            { key: 'state', label: 'State' },
-            { key: 'zip', label: 'Zip' },
-            { key: 'architect', label: 'Architect' },
-            { key: 'contactPerson', label: 'Contact Person' },
-            { key: 'email', label: 'Email' },
-            { key: 'phone', label: 'Phone' }
-          ].map((field) => (
-            <div key={field.key} className="space-y-2">
-              <label className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] ml-1">
-                {field.label}
-              </label>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div className="col-span-2">
+            <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1">
+              Project Name *
+            </label>
+            <input
+              type="text"
+              value={projectInfo.projectName}
+              onChange={(e) =>
+                setProjectInfo({ ...projectInfo, projectName: e.target.value })
+              }
+              className="w-full bg-white/5 border border-white/10 rounded-md px-2 py-2 text-white text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all font-medium"
+              placeholder="e.g. Modernfold HQ Renovation"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1">
+              City
+            </label>
+            <input
+              type="text"
+              value={projectInfo.city}
+              onChange={(e) =>
+                setProjectInfo({ ...projectInfo, city: e.target.value })
+              }
+              className="w-full bg-white/5 border border-white/10 rounded-md px-2 py-2 text-white text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1">
+              State / Zip
+            </label>
+            <div className="flex gap-2">
               <input
                 type="text"
-                value={(projectInfo as any)[field.key]}
-                onChange={(e) => setProjectInfo({ ...projectInfo, [field.key]: e.target.value })}
-                className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all font-medium placeholder:text-slate-700"
-                placeholder={`Enter ${field.label}`}
+                value={projectInfo.state}
+                onChange={(e) =>
+                  setProjectInfo({ ...projectInfo, state: e.target.value })
+                }
+                className="w-1/3 bg-white/5 border border-white/10 rounded-md px-2 py-2 text-white text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+                placeholder="State"
+              />
+              <input
+                type="text"
+                value={projectInfo.zip}
+                onChange={(e) =>
+                  setProjectInfo({ ...projectInfo, zip: e.target.value })
+                }
+                className="w-2/3 bg-white/5 border border-white/10 rounded-md px-2 py-2 text-white text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+                placeholder="Zip Code"
               />
             </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
+          </div>
 
-  const renderSummaryStep = () => {
-    return (
-      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-700">
-        <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-3xl p-8 text-center mb-8 relative overflow-hidden group">
-          <div className="absolute inset-0 bg-emerald-500/5 blur-3xl group-hover:bg-emerald-500/10 transition-all duration-1000" />
-          <h2 className="text-3xl font-black text-white mb-2 relative z-10 italic">ALL DONE!</h2>
-          <p className="text-emerald-400 relative z-10 font-bold tracking-wide">Review your Glass Partition Design</p>
-        </div>
+          <div className="col-span-2 h-[1px] bg-white/5 my-2" />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {[
-            { label: 'Location', value: location },
-            { label: 'Width', value: width.mode === 'feet-inches' ? `${width.feet}' ${width.inchMain}"` : `${width.inches}"` },
-            { label: 'Height', value: height.mode === 'feet-inches' ? `${height.feet}' ${height.inchMain}"` : `${height.inches}"` },
-            { label: 'Configuration', value: panelConfig },
-            { label: 'Pocket', value: pocketType },
-            { label: 'Closure', value: closure },
-            { label: 'Rails', value: rail },
-            { label: 'Egress', value: egress },
-            { label: 'Model', value: model },
-            { label: 'Track', value: track },
-            { label: 'Glass', value: glass },
-            { label: 'Finish', value: finish }
-          ].map((item) => (
-            <div key={item.label} className="bg-white/5 border border-white/10 rounded-xl p-4 flex justify-between items-center">
-              <span className="text-slate-500 text-xs font-black uppercase tracking-widest">{item.label}</span>
-              <span className="text-white font-bold capitalize">{item.value || '-'}</span>
-            </div>
-          ))}
-        </div>
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1">
+              Architect / Designer
+            </label>
+            <input
+              type="text"
+              value={projectInfo.architect}
+              onChange={(e) =>
+                setProjectInfo({ ...projectInfo, architect: e.target.value })
+              }
+              className="w-full bg-white/5 border border-white/10 rounded-md px-2 py-2 text-white text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1">
+              Contact Person
+            </label>
+            <input
+              type="text"
+              value={projectInfo.contactPerson}
+              onChange={(e) =>
+                setProjectInfo({
+                  ...projectInfo,
+                  contactPerson: e.target.value,
+                })
+              }
+              className="w-full bg-white/5 border border-white/10 rounded-md px-2 py-2 text-white text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+            />
+          </div>
 
-        <div className="pt-8">
-          <button
-            onClick={() => {
-              alert('Design Saved!');
-              resetForm();
-            }}
-            className="w-full py-4 rounded-xl font-black uppercase tracking-tighter text-black bg-blue-500 shadow-[0_10px_30px_rgba(59,130,246,0.2)] transition-all hover:translate-y-[-2px] hover:shadow-[0_15px_40px_rgba(59,130,246,0.3)] active:translate-y-0 italic"
-          >
-            Finish & Create Another
-          </button>
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1">
+              Email *
+            </label>
+            <input
+              type="email"
+              value={projectInfo.email}
+              onChange={(e) =>
+                setProjectInfo({ ...projectInfo, email: e.target.value })
+              }
+              className="w-full bg-white/5 border border-white/10 rounded-md px-2 py-2 text-white text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+              placeholder="name@company.com"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1">
+              Phone
+            </label>
+            <input
+              type="tel"
+              value={projectInfo.phone}
+              onChange={(e) =>
+                setProjectInfo({ ...projectInfo, phone: e.target.value })
+              }
+              className="w-full bg-white/5 border border-white/10 rounded-md px-2 py-2 text-white text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+            />
+          </div>
         </div>
       </div>
     );
@@ -818,107 +1283,228 @@ export default function GlassPartition() {
     <div className="bg-[#050505] text-slate-200 font-sans selection:bg-emerald-500/30 w-full min-h-full">
       <div className="flex flex-col w-full">
         {/* Main Content */}
-        <div className="w-full bg-gradient-to-b from-[#0a0a0a] to-[#050505] relative flex justify-center">
-          <div className="w-full max-w-xl px-8 py-12">
-
-            <header className="mb-16">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="h-10 w-3 bg-blue-500 rounded-sm skew-x-12" />
-                <h1 className="text-4xl font-black tracking-tighter text-white uppercase italic">
-                  Design <span className="text-blue-500 not-italic font-light">Planner</span>
+        <div className="w-full relative">
+          <div className="w-full p-1">
+            <header className="mb-3">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="h-6 w-2 bg-[color:var(--accent,#10b981)] rounded-sm" />
+                <h1 className="text-xl font-black tracking-tight text-white flex items-baseline gap-2">
+                  Design Planner
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                    {STEP_LABELS[currentStep]}
+                  </span>
                 </h1>
               </div>
 
-              {/* Step Tracker */}
-              <div className="flex gap-4 mb-8 overflow-x-auto pb-4 scrollbar-hide">
-                {['dimensions', 'configuration', 'pocket', 'closure', 'rails', 'model', 'finish', 'summary'].map((step, idx) => {
-                  const isActive = currentStep === step ||
-                    (step === 'rails' && (currentStep === 'egress')) ||
-                    (step === 'model' && (currentStep === 'track')) ||
-                    (step === 'finish' && (currentStep === 'glass' || currentStep === 'project_info'));
-
-                  // Simplified tracker for display
-                  if (!['dimensions', 'configuration', 'pocket', 'closure', 'rails', 'model', 'finish', 'summary'].includes(step)) return null;
+              {/* Radial Step Tracker (compact) */}
+              <div className="flex gap-2 mb-2 flex-wrap">
+                {STEP_ORDER.map((id, idx) => {
+                  const isActive = currentStep === id;
+                  const isCompleted =
+                    id === "summary"
+                      ? currentStep === "summary" && isFormComplete()
+                      : isStepComplete(id);
                   return (
-                    <div key={step} className="flex items-center gap-2 shrink-0">
-                      <div className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-black transition-all rotate-45 ${isActive ? 'bg-blue-500 text-black shadow-[0_0_15px_rgba(59,130,246,0.4)]' :
-                          'bg-white/5 border border-white/10 text-slate-600'
-                        }`}>
-                        <span className="-rotate-45">{idx + 1}</span>
-                      </div>
-                      <span className={`text-[10px] font-black uppercase tracking-widest ${isActive ? 'text-white' : 'text-slate-700'}`}>
-                        {step.slice(0, 3)}
-                      </span>
-                      {idx < 3 && <div className="w-4 h-[1px] bg-white/5" />}
-                    </div>
+                    <button
+                      key={id}
+                      onClick={() => goToStep(id)}
+                      aria-current={isActive}
+                      className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black transition-all ${isCompleted ? `bg-${ACCENT} text-black` : "bg-white/5 text-slate-500"} ${isActive ? "ring-2 ring-emerald-400/70 ring-offset-1 ring-offset-black" : ""}`}
+                      title={`${idx + 1}. ${STEP_LABELS[id]}`}
+                    >
+                      {idx + 1}
+                    </button>
                   );
                 })}
               </div>
             </header>
 
-            <section className="space-y-12">
-              {currentStep === 'dimensions' && (
-                <div className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-500">
-                  <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-xl transition-all hover:border-emerald-500/30">
-                    <label className="block text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] mb-4 ml-1">Partition Location</label>
+            <section className="space-y-2">
+              {currentStep === "dimensions" && (
+                <div className="space-y-2">
+                  <div className={`${card} w-full`}>
+                    <label className="block text-xs text-slate-400 uppercase font-bold mb-1">
+                      Partition Location
+                    </label>
                     <input
                       type="text"
                       defaultValue={location}
                       onBlur={(e) => setLocation(e.target.value)}
-                      placeholder="EX: OFFICE 101..."
-                      className="w-full bg-black/60 border border-white/10 rounded-xl px-5 py-4 text-white text-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all font-bold placeholder:text-slate-800 uppercase tracking-tight"
+                      placeholder="EX: BALLROOM A, OFFICE 201..."
+                      className="w-full bg-transparent border-none px-2 py-2 text-white text-sm focus:outline-none"
                     />
                   </div>
-                  <div className="space-y-8">
-                    {renderDimensionInput('Opening Width', width, setWidth)}
-                    {renderDimensionInput('Opening Height', height, setHeight)}
+                  <div className="space-y-2">
+                    {renderDimensionInput("Opening Width", width, setWidth)}
+                    {renderDimensionInput("Opening Height", height, setHeight)}
                   </div>
                 </div>
               )}
 
-              {currentStep === 'configuration' && renderConfigurationStep()}
+              {currentStep === "configuration" && renderConfigurationStep()}
 
-              {currentStep === 'pocket' && renderPocketStep()}
+              {currentStep === "pocket" && renderPocketStep()}
 
-              {currentStep === 'closure' && renderClosureStep()}
+              {currentStep === "closure" && renderClosureStep()}
 
-              {currentStep === 'rails' && renderRailsStep()}
+              {currentStep === "rail" && renderRailStep()}
 
-              {currentStep === 'egress' && renderEgressStep()}
+              {currentStep === "egress" && renderEgressStep()}
 
-              {currentStep === 'model' && renderModelStep()}
+              {currentStep === "model" && renderModelStep()}
 
-              {currentStep === 'track' && renderTrackStep()}
+              {currentStep === "track" && renderTrackStep()}
 
-              {currentStep === 'glass' && renderGlassStep()}
+              {currentStep === "glass" && renderGlassStep()}
 
-              {currentStep === 'finish' && renderFinishStep()}
+              {currentStep === "finish" && renderFinishStep()}
 
-              {currentStep === 'project_info' && renderProjectInfoStep()}
+              {currentStep === "project_info" && renderProjectInfoStep()}
 
-              {currentStep === 'summary' && renderSummaryStep()}
+              {currentStep === "summary" && (
+                <div className="bg-white/5 border border-white/10 rounded-3xl p-6 animate-in zoom-in-95 duration-500">
+                  {isFormComplete() ? (
+                    <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                      <svg
+                        className="w-8 h-8 text-emerald-500"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                    </div>
+                  ) : (
+                    <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
+                      <svg
+                        className="w-8 h-8 text-slate-400"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </div>
+                  )}
+                  <h2 className="text-2xl font-bold text-white mb-2 text-center">
+                    {isFormComplete()
+                      ? "Configuration Complete"
+                      : "Configuration Incomplete"}
+                  </h2>
+                  <p className="text-slate-400 mb-4 text-center">
+                    {isFormComplete()
+                      ? "Here is the summary of your glass partition specification."
+                      : "Complete all steps to finalize the configuration."}
+                  </p>
 
-              <div className="flex items-center justify-between pt-12 border-t border-white/5">
-                <button
-                  onClick={handlePrevStep}
-                  className={`text-[10px] font-black uppercase tracking-widest transition-all ${currentStep === 'dimensions' ? 'text-slate-800 pointer-events-none' : 'text-slate-500 hover:text-white'
-                    }`}
-                >
-                  ← Previous Step
-                </button>
+                  <div className="space-y-3 text-sm text-slate-300">
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 border-b border-white/5 pb-4">
+                      <span className="text-emerald-400 font-bold col-span-2 text-xs uppercase tracking-wider mb-1">
+                        Dimensions & Location
+                      </span>
+                      <span className="text-slate-500">Location:</span>{" "}
+                      <span className="text-right">{location}</span>
+                      <span className="text-slate-500">Width:</span>{" "}
+                      <span className="text-right">
+                        {width.feet}' {width.inchMain}"
+                      </span>
+                      <span className="text-slate-500">Height:</span>{" "}
+                      <span className="text-right">
+                        {height.feet}' {height.inchMain}"
+                      </span>
+                    </div>
 
-                <button
-                  onClick={handleNextStep}
-                  className="group relative px-12 py-4 rounded-xl font-black uppercase tracking-tighter text-black bg-blue-500 shadow-[0_10px_30px_rgba(59,130,246,0.2)] transition-all hover:translate-y-[-2px] hover:shadow-[0_15px_40px_rgba(59,130,246,0.3)] active:translate-y-0 italic overflow-hidden"
-                >
-                  <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out" />
-                  <span className="relative z-10">
-                    {currentStep === 'summary' ? 'Finish' : 'Continue Step →'}
-                  </span>
-                </button>
-              </div>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 border-b border-white/5 pb-4">
+                      <span className="text-emerald-400 font-bold col-span-2 text-xs uppercase tracking-wider mb-1">
+                        Configuration
+                      </span>
+                      <span className="text-slate-500">Panel Layout:</span>{" "}
+                      <span className="text-right capitalize">
+                        {panelConfig}
+                      </span>
+                      <span className="text-slate-500">Pocket:</span>{" "}
+                      <span className="text-right capitalize">
+                        {pocketType === "wtw" ? "Wall to Wall" : pocketType}
+                      </span>
+                      <span className="text-slate-500">Pocket Door:</span>{" "}
+                      <span className="text-right">
+                        {hasPocketDoor ? "Yes" : "No"}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 border-b border-white/5 pb-4">
+                      <span className="text-emerald-400 font-bold col-span-2 text-xs uppercase tracking-wider mb-1">
+                        Hardware & Glass
+                      </span>
+                      <span className="text-slate-500">Closure:</span>{" "}
+                      <span className="text-right capitalize">{closure}</span>
+                      <span className="text-slate-500">Rail System:</span>{" "}
+                      <span className="text-right capitalize">{rail}</span>
+                      <span className="text-slate-500">Egress:</span>{" "}
+                      <span className="text-right capitalize">{egress}</span>
+                      <span className="text-slate-500">Model:</span>{" "}
+                      <span className="text-right capitalize">{model}</span>
+                      <span className="text-slate-500">Track:</span>{" "}
+                      <span className="text-right capitalize">{track}</span>
+                      <span className="text-slate-500">Glass Type:</span>{" "}
+                      <span className="text-right capitalize">{glassType}</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 border-b border-white/5 pb-4">
+                      <span className="text-emerald-400 font-bold col-span-2 text-xs uppercase tracking-wider mb-1">
+                        Finish
+                      </span>
+                      <span className="text-slate-500">Hardware Finish:</span>{" "}
+                      <span className="text-right capitalize">
+                        {finishType}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                      <span className="text-emerald-400 font-bold col-span-2 text-xs uppercase tracking-wider mb-1">
+                        Project Info
+                      </span>
+                      <span className="text-slate-500">Project:</span>{" "}
+                      <span className="text-right">
+                        {projectInfo.projectName}
+                      </span>
+                      <span className="text-slate-500">Contact:</span>{" "}
+                      <span className="text-right">
+                        {projectInfo.contactPerson}
+                      </span>
+                      <span className="text-slate-500">Email:</span>{" "}
+                      <span className="text-right">{projectInfo.email}</span>
+                    </div>
+                  </div>
+
+                  <div className="pt-3">
+                    <button
+                      type="button"
+                      disabled={
+                        !isFormComplete() || !isEmailValid(projectInfo.email)
+                      }
+                      className={`w-full rounded-md py-2 text-sm font-bold transition-all ${
+                        isFormComplete() && isEmailValid(projectInfo.email)
+                          ? `bg-${ACCENT} text-black`
+                          : "bg-white/10 text-slate-500 cursor-not-allowed"
+                      }`}
+                    >
+                      Request a quote
+                    </button>
+                  </div>
+                </div>
+              )}
             </section>
-
           </div>
         </div>
       </div>
