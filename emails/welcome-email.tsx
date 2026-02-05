@@ -14,8 +14,9 @@ export default function WelcomeEmail({
   jsonId,
   baseUrl
 }: WelcomeEmailProps) {
+  const safeName = userName.replace(/\s+/g, '-').toLowerCase();
   const downloadUrl = jsonId
-    ? `${baseUrl}/api/email?id=${jsonId}&name=quota-request-${userName.replace(/\s+/g, '-').toLowerCase()}.json`
+    ? `${baseUrl}/api/email?id=${encodeURIComponent(jsonId)}&name=${encodeURIComponent(`quota-request-${safeName}.json`)}`
     : undefined;
 
   return (

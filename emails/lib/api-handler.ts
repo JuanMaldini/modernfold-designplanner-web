@@ -17,7 +17,7 @@ export async function handleSendEmail(request: NextRequest) {
 
     let jsonId: string | undefined = undefined;
     if (jsonData) {
-      jsonId = storeJson(jsonData);
+      jsonId = await storeJson(jsonData);
     }
 
     const protocol = request.headers.get("x-forwarded-proto") || "http";
@@ -53,7 +53,7 @@ export async function handleDownloadJson(request: NextRequest) {
       return NextResponse.json({ error: "ID requerido" }, { status: 400 });
     }
 
-    const jsonData = getJson(id);
+    const jsonData = await getJson(id);
 
     if (!jsonData) {
       return NextResponse.json(
@@ -68,11 +68,13 @@ export async function handleDownloadJson(request: NextRequest) {
         ? jsonData
         : JSON.stringify(jsonData, null, 2);
 
+    const safeFileName = sanitizeFileName(fileName);
+
     return new NextResponse(jsonString, {
       status: 200,
       headers: {
         "Content-Type": "application/json",
-        "Content-Disposition": `attachment; filename="${fileName}"`,
+        "Content-Disposition": `attachment; filename="${safeFileName}"`,
       },
     });
   } catch (error: any) {
@@ -81,4 +83,10 @@ export async function handleDownloadJson(request: NextRequest) {
       { status: 500 },
     );
   }
+}
+
+function sanitizeFileName(name: string) {
+  const normalized = name.trim() || "data.json";
+  const safe = normalized.replace(/[^a-zA-Z0-9._-]+/g, "-");
+  return safe.endsWith(".json") ? safe : `${safe}.json`;
 }

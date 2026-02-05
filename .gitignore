@@ -17,6 +17,9 @@
 /.next/
 /out/
 
+# local json storage
+/.json-store/
+
 # production
 /build
 
