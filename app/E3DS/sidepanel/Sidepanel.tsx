@@ -44,7 +44,7 @@ export default function Sidepanel() {
       */}
 
       <div className="mt-2 flex flex-col gap-3">
-        <strong className="text-white text-xs uppercase tracking-widest opacity-50">
+        <strong className="text-white  text-center text-xs uppercase tracking-widest opacity-50">
           Select Configuration
         </strong>
         <div className="grid grid-cols-2 gap-2">
