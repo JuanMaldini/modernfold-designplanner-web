@@ -35,6 +35,47 @@
   }
 }
 
+@layer base {
+  .modernfold-light .text-white {
+    color: #0f172a !important;
+  }
+
+  .modernfold-light .text-slate-400 {
+    color: #475569 !important;
+  }
+
+  .modernfold-light .text-slate-300 {
+    color: #64748b !important;
+  }
+
+  .modernfold-light .text-white\/20 {
+    color: #94a3b8 !important;
+  }
+
+  .modernfold-light .text-white\/10 {
+    color: #cbd5e1 !important;
+  }
+
+  .modernfold-light .bg-white\/5 {
+    background-color: #ffffff !important;
+  }
+
+  .modernfold-light .bg-white\/10 {
+    background-color: #f8fafc !important;
+  }
+
+  .modernfold-light .bg-black\/40,
+  .modernfold-light .bg-black\/60 {
+    background-color: #f1f5f9 !important;
+  }
+
+  .modernfold-light .border-white\/10,
+  .modernfold-light .border-white\/5,
+  .modernfold-light .border-white\/20 {
+    border-color: #e2e8f0 !important;
+  }
+}
+
 /* n8n chat widget positioning */
 .chat-window-wrapper.n8n-chat {
   left: var(--chat--window--right, var(--chat--spacing));

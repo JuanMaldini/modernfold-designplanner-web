@@ -12,14 +12,14 @@ export default function Home() {
                     </button>
                 </Link>
 
-                {/* <Link href="/send-email">
+                <Link href="/send-email">
                     <button className="rounded bg-blue-500 px-4 py-2 font-bold text-white hover:bg-blue-700">
                         Send email
                     </button>
-                </Link> */}
+                </Link>
             </div>
 
-            {/* <div className='flex flex-wrap gap-2'>
+            <div className='flex flex-wrap gap-2'>
                 <Link href="/partition-operable">
                     <button className="rounded bg-blue-500 px-4 py-2 font-bold text-white hover:bg-blue-700">
                         Operable Partition
@@ -40,7 +40,7 @@ export default function Home() {
                         Accordion Partition
                     </button>
                 </Link>
-            </div> */}
+            </div>
 
         </main>
     );

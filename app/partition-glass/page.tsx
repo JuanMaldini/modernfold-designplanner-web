@@ -50,8 +50,8 @@ interface ProjectInfo {
 }
 
 export default function GlassPartition() {
-  const ACCENT = "emerald-500";
-  const card = "bg-transparent border border-white/5 rounded-md p-2";
+  const ACCENT = "emerald-600";
+  const card = "bg-white border border-slate-200 rounded-md p-2 shadow-sm";
   const smallBtn = "px-3 py-2 rounded-md text-sm font-bold";
   const STEP_ORDER: Step[] = [
     "dimensions",
@@ -425,13 +425,13 @@ export default function GlassPartition() {
     onChange: (val: DimensionValue) => void,
   ) => {
     return (
-      <div className="bg-white/5  p-2 transition-all hover:border-emerald-500/30 group">
+      <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm transition-all hover:border-emerald-400/50 group">
         <h3 className="text-md font-semibold mb-2 text-emerald-400 flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
           {label}
         </h3>
 
-        <div className="flex gap-2 mb-6 bg-black/40 p-1 rounded-xl w-fit border border-white/5">
+        <div className="flex gap-2 mb-6 bg-slate-100 p-1 rounded-xl w-fit border border-slate-200">
           {(["feet-inches", "inches", "metric"] as DimensionMode[]).map(
             (mode) => (
               <button
@@ -439,8 +439,8 @@ export default function GlassPartition() {
                 onClick={() => onChange({ ...value, mode })}
                 className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
                   value.mode === mode
-                    ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/20"
-                    : "text-slate-500 hover:text-white hover:bg-white/5"
+                    ? "bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-white"
                 }`}
               >
                 {mode === "feet-inches"
@@ -466,7 +466,7 @@ export default function GlassPartition() {
                   onBlur={(e) =>
                     onChange({ ...value, feet: Number(e.target.value) })
                   }
-                  className="bg-black/60 border border-white/10 rounded-md px-2 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all font-mono text-sm"
+                  className="bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all font-mono text-sm"
                   placeholder="0"
                 />
               </div>
@@ -480,7 +480,7 @@ export default function GlassPartition() {
                   onBlur={(e) =>
                     onChange({ ...value, inchMain: Number(e.target.value) })
                   }
-                  className="bg-black/60 border border-white/10 rounded-md px-2 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all font-mono text-sm"
+                  className="bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all font-mono text-sm"
                   placeholder="0"
                 />
               </div>
@@ -495,7 +495,7 @@ export default function GlassPartition() {
                     onBlur={(e) =>
                       onChange({ ...value, numerator: Number(e.target.value) })
                     }
-                    className="bg-black/60 border border-white/10 rounded-md px-2 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all w-full font-mono text-center text-sm"
+                    className="bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all w-full font-mono text-center text-sm"
                     placeholder="Num"
                   />
                   <span className="text-white/20 font-light text-2xl">/</span>
@@ -508,7 +508,7 @@ export default function GlassPartition() {
                         denominator: Number(e.target.value),
                       })
                     }
-                    className="bg-black/60 border border-white/10 rounded-md px-2 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all w-full font-mono text-center text-sm"
+                    className="bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all w-full font-mono text-center text-sm"
                     placeholder="Den"
                   />
                 </div>
@@ -528,7 +528,7 @@ export default function GlassPartition() {
                 onBlur={(e) =>
                   onChange({ ...value, inches: Number(e.target.value) })
                 }
-                className="bg-black/60 border border-white/10 rounded-md px-2 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all font-mono text-sm"
+                className="bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all font-mono text-sm"
                 placeholder="0.00"
               />
             </div>
@@ -546,7 +546,7 @@ export default function GlassPartition() {
                 onBlur={(e) =>
                   onChange({ ...value, millimeters: Number(e.target.value) })
                 }
-                className="bg-black/60 border border-white/10 rounded-md px-2 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all font-mono text-sm"
+                className="bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all font-mono text-sm"
                 placeholder="0.0"
               />
             </div>
@@ -583,11 +583,11 @@ export default function GlassPartition() {
 
     return (
       <div className="space-y-3 animate-in fade-in slide-in-from-right-4 duration-500">
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-sm mb-2">
+        <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm mb-2">
           <h2 className="text-2xl font-bold text-white mb-2">
             Select Panel Configuration
           </h2>
-          <p className="text-slate-400 text-sm">
+          <p className="text-slate-600 text-sm">
             Choose the operational mode that best fits your space requirements.
           </p>
         </div>
@@ -600,7 +600,7 @@ export default function GlassPartition() {
               className={`text-left p-2 rounded-2xl border transition-all ${
                 panelConfig === opt.id
                   ? "bg-emerald-500/10 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.1)]"
-                  : "bg-white/5 border-white/10 hover:border-white/20"
+                  : "bg-white border-slate-200 hover:border-slate-300"
               }`}
             >
               <div className="flex justify-between items-start mb-2">
@@ -621,14 +621,14 @@ export default function GlassPartition() {
                   )}
                 </div>
               </div>
-              <p className="text-slate-400 text-sm mb-2 leading-relaxed">
+              <p className="text-slate-600 text-sm mb-2 leading-relaxed">
                 {opt.description}
               </p>
               <div className="pt-2 border-t border-white/5">
                 <span className="text-[10px] text-slate-500 uppercase font-black tracking-widest block mb-1">
                   Common Applications
                 </span>
-                <span className="text-xs text-slate-300 font-medium">
+                <span className="text-xs text-slate-600 font-medium">
                   {opt.app}
                 </span>
               </div>
@@ -1359,7 +1359,7 @@ export default function GlassPartition() {
   };
 
   return (
-    <div className="bg-[#050505] text-slate-200 font-sans selection:bg-emerald-500/30 w-full min-h-full">
+    <div className="modernfold-light bg-slate-50 text-slate-800 font-sans selection:bg-emerald-500/30 w-full min-h-full">
       <div className="flex flex-col w-full">
         {/* Main Content */}
         <div className="w-full relative">
@@ -1367,7 +1367,7 @@ export default function GlassPartition() {
             <header className="mb-3">
               <div className="flex items-center gap-2 mb-2">
                 <div className="h-6 w-2 bg-[color:var(--accent,#10b981)] rounded-sm" />
-                <h1 className="text-xl font-black tracking-tight text-white flex items-baseline gap-2">
+                <h1 className="text-xl font-black tracking-tight text-slate-600 flex items-baseline gap-2">
                   Design Planner
                   <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
                     {STEP_LABELS[currentStep]}

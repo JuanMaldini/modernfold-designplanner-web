@@ -19,7 +19,7 @@ export default function Sidepanel() {
   };
 
   return (
-    <div className="bg-slate-900 w-full h-full overflow-y-auto">
+    <div className="modernfold-light bg-slate-50 text-slate-800 w-full h-full overflow-y-auto">
 
       {/*
       <div className="mb-2">
@@ -44,7 +44,7 @@ export default function Sidepanel() {
       */}
 
       <div className="mt-2 flex flex-col gap-3">
-        <strong className="text-white  text-center text-xs uppercase tracking-widest opacity-50">
+        <strong className="text-slate-600 text-center text-xs uppercase tracking-widest">
           Select Configuration
         </strong>
         <div className="grid grid-cols-2 gap-2">
@@ -52,8 +52,8 @@ export default function Sidepanel() {
             onClick={() => setActivePartition("operable")}
             className={`px-3 py-2 rounded-lg text-xs font-bold transition-all ${
               activePartition === "operable"
-                ? "bg-white text-black"
-                : "bg-white/5 text-white hover:bg-white/10"
+                ? "bg-emerald-600 text-white ring-1 ring-inset ring-emerald-600"
+                : "bg-white text-slate-700 ring-1 ring-inset ring-slate-200 hover:ring-slate-300"
             }`}
           >
             Operable
@@ -62,8 +62,8 @@ export default function Sidepanel() {
             onClick={() => setActivePartition("glass")}
             className={`px-3 rounded-lg text-xs font-bold transition-all ${
               activePartition === "glass"
-                ? "bg-white text-black"
-                : "bg-white/5 text-white hover:bg-white/10"
+                ? "bg-emerald-600 text-white ring-1 ring-inset ring-emerald-600"
+                : "bg-white text-slate-700 ring-1 ring-inset ring-slate-200 hover:ring-slate-300"
             }`}
           >
             Glass
@@ -74,8 +74,8 @@ export default function Sidepanel() {
       {/* Dynamic Container (Observer Window) */}
       <div className="pt-2">
         {activePartition ? (
-          <div className="bg-black/40 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="overflow-y-auto rounded-xl">
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="overflow-y-auto">
               {activePartition === "operable" ? (
                 <OperablePartition />
               ) : (
