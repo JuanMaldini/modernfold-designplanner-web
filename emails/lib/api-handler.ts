@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sendEmail } from "@/emails/lib/email-service";
-import WelcomeEmail from "@/emails/welcome-email";
-import { storeJson, getJson } from "@/emails/lib/json-storage";
+import WelcomeEmail, { buildJsonFileName } from "@/emails/welcome-email";
 
 export async function handleSendEmail(request: NextRequest) {
   try {
@@ -10,83 +9,50 @@ export async function handleSendEmail(request: NextRequest) {
 
     if (!to) {
       return NextResponse.json(
-        { error: "Email destinatario requerido" },
+        { error: "Recipient email required" },
         { status: 400 },
       );
     }
 
-    let jsonId: string | undefined = undefined;
-    if (jsonData) {
-      jsonId = await storeJson(jsonData);
+    if (!jsonData) {
+      return NextResponse.json(
+        { error: "JSON required" },
+        { status: 400 },
+      );
     }
 
-    const protocol = request.headers.get("x-forwarded-proto") || "http";
-    const host = request.headers.get("host");
-    const baseUrl = `${protocol}://${host}`;
+    const fileName = buildJsonFileName(userName || "user");
+    const jsonString =
+      typeof jsonData === "string"
+        ? jsonData
+        : JSON.stringify(jsonData ?? {}, null, 2);
 
     await sendEmail(
       to,
       //SUBJECT
       "CARRA - TEST FROM WEB",
-      WelcomeEmail({ userName, userEmail: userEmail || to, jsonId, baseUrl }),
+      WelcomeEmail({ userName, userEmail: userEmail || to, fileName }),
+      {
+        fileName,
+        content: jsonString,
+      },
     );
 
     return NextResponse.json(
-      { message: "Email enviado exitosamente" },
+      { message: "Success" },
       { status: 200 },
     );
   } catch (error: any) {
     return NextResponse.json(
-      { error: error.message || "Error al enviar email" },
+      { error: error.message || "Error sending email" },
       { status: 500 },
     );
   }
 }
 
-export async function handleDownloadJson(request: NextRequest) {
-  try {
-    const searchParams = request.nextUrl.searchParams;
-    const id = searchParams.get("id");
-    const fileName = searchParams.get("name") || "data.json";
-
-    if (!id) {
-      return NextResponse.json({ error: "ID requerido" }, { status: 400 });
-    }
-
-    const jsonData = await getJson(id);
-
-    if (!jsonData) {
-      return NextResponse.json(
-        { error: "JSON no encontrado o expirado" },
-        { status: 404 },
-      );
-    }
-
-    // Si ya es un string (raw JSON), lo enviamos directo. Si es objeto, lo stringificamos.
-    const jsonString =
-      typeof jsonData === "string"
-        ? jsonData
-        : JSON.stringify(jsonData, null, 2);
-
-    const safeFileName = sanitizeFileName(fileName);
-
-    return new NextResponse(jsonString, {
-      status: 200,
-      headers: {
-        "Content-Type": "application/json",
-        "Content-Disposition": `attachment; filename="${safeFileName}"`,
-      },
-    });
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: "Error al descargar JSON" },
-      { status: 500 },
-    );
-  }
-}
-
-function sanitizeFileName(name: string) {
-  const normalized = name.trim() || "data.json";
-  const safe = normalized.replace(/[^a-zA-Z0-9._-]+/g, "-");
-  return safe.endsWith(".json") ? safe : `${safe}.json`;
+export async function handleDownloadJson() {
+  return NextResponse.json(
+    { error: "Download not available. The JSON is attached to the email." },
+    { status: 410 },
+  );
 }
