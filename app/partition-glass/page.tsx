@@ -71,7 +71,7 @@ export default function GlassPartition() {
   const STEP_LABELS: Record<Step, string> = {
     dimensions: "Dimensions",
     configuration: "Configuration",
-    pocket: "Pocket",
+    pocket: "Storage Condition",
     closure: "Closure",
     rail: "Rail System",
     egress: "Egress",
@@ -707,29 +707,6 @@ export default function GlassPartition() {
                 </p>
               </button>
 
-              {/* Pocket Door Toggle */}
-              {opt.allowDoor && pocketType === opt.id && (
-                <div className="mx-4 mb-2 pt-2 border-t border-white/10 animate-in slide-in-from-top-2 duration-300">
-                  <label className="flex items-center gap-2 cursor-pointer group">
-                    <div
-                      className={`w-12 h-7 rounded-full transition-colors relative ${hasPocketDoor ? "bg-emerald-500" : "bg-slate-700"}`}
-                    >
-                      <input
-                        type="checkbox"
-                        className="sr-only"
-                        checked={hasPocketDoor}
-                        onChange={(e) => setHasPocketDoor(e.target.checked)}
-                      />
-                      <div
-                        className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-transform shadow-md ${hasPocketDoor ? "left-[22px]" : "left-1"}`}
-                      />
-                    </div>
-                    <span className="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors">
-                      Include Pocket Door
-                    </span>
-                  </label>
-                </div>
-              )}
             </div>
           ))}
         </div>
