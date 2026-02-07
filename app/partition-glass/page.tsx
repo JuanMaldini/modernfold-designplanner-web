@@ -706,7 +706,6 @@ export default function GlassPartition() {
                   {opt.description}
                 </p>
               </button>
-
             </div>
           ))}
         </div>
@@ -1122,30 +1121,31 @@ export default function GlassPartition() {
 
   const renderFinishStep = () => {
     const options = [
+      { id: "black_anodized" as FinishType, title: "Black Anodized" },
+      { id: "clear_anodized" as FinishType, title: "Clear Anodized" },
       {
-        id: "clear" as FinishType,
-        title: "Clear Anodized",
-        description: "Natural aluminum finish with protective coating.",
+        id: "dark_bronze_anodized" as FinishType,
+        title: "Dark Bronze Anodized",
+      },
+      { id: "polished_brass" as FinishType, title: "Polished Brass" },
+
+      {
+        id: "polished_stainless_steel" as FinishType,
+        title: "Polished Stainless Steel",
       },
       {
-        id: "bronze" as FinishType,
-        title: "Bronze Anodized",
-        description: "Warm bronze tone for traditional aesthetics.",
+        id: "ral_gloss" as FinishType,
+        title: 'RAL "Classic" Powder Coat (Gloss Finish)',
       },
       {
-        id: "black" as FinishType,
-        title: "Black Anodized",
-        description: "Modern matte black finish for contemporary spaces.",
+        id: "ral_satin" as FinishType,
+        title: 'RAL "Classic" Powder Coat (Satin Finish)',
       },
+      { id: "satin_brass" as FinishType, title: "Satin Brass" },
+
       {
-        id: "satin" as FinishType,
-        title: "Satin Stainless",
-        description: "Brushed stainless steel appearance.",
-      },
-      {
-        id: "custom" as FinishType,
-        title: "Custom Finish",
-        description: "Powder-coated or specialty finishes available.",
+        id: "satin_stainless_anodized" as FinishType,
+        title: "Satin Stainless Anodized",
       },
     ];
 
@@ -1177,7 +1177,6 @@ export default function GlassPartition() {
                 >
                   {opt.title}
                 </h3>
-                <p className="text-slate-500 text-xs mt-1">{opt.description}</p>
               </div>
               <div
                 className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${

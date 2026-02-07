@@ -74,7 +74,7 @@ export default function OperablePartition() {
   const STEP_LABELS: Record<Step, string> = {
     dimensions: "Dimensions",
     configuration: "Configuration",
-    pocket: "Pocket",
+    pocket: "Storage Condition",
     durability: "Durability",
     stc: "STC",
     closure: "Closure",
@@ -668,20 +668,34 @@ export default function OperablePartition() {
         title: "Wall to Wall",
         description:
           "No pocket. Panels stack against the wall within the room.",
-        allowDoor: false,
+        hasDoor: false,
       },
       {
         id: "inside" as PocketType,
         title: "Pocket Inside Room",
         description: "Storage pocket constructed within the room boundaries.",
-        allowDoor: true,
+        hasDoor: false,
+      },
+      {
+        id: "inside" as PocketType,
+        title: "Pocket Inside Room - Include Pocket Door",
+        description:
+          "Storage pocket constructed within the room boundaries. Includes a pocket door.",
+        hasDoor: true,
       },
       {
         id: "outside" as PocketType,
         title: "Pocket Outside Room",
         description:
           "Storage pocket constructed outside the room boundaries (remote).",
-        allowDoor: true,
+        hasDoor: false,
+      },
+      {
+        id: "outside" as PocketType,
+        title: "Pocket Outside Room - Include Pocket Door",
+        description:
+          "Storage pocket constructed outside the room boundaries (remote). Includes a pocket door.",
+        hasDoor: true,
       },
     ];
 
@@ -697,11 +711,11 @@ export default function OperablePartition() {
         </div>
 
         <div className="grid grid-cols-1 gap-2">
-          {options.map((opt) => (
+          {options.map((opt, index) => (
             <div
-              key={opt.id}
+              key={`${opt.id}-${opt.hasDoor}-${index}`}
               className={`relative rounded-2xl border transition-all ${
-                pocketType === opt.id
+                pocketType === opt.id && hasPocketDoor === opt.hasDoor
                   ? "bg-emerald-500/10 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.1)]"
                   : "bg-white/5 border-white/10 hover:border-white/20"
               }`}
@@ -709,24 +723,24 @@ export default function OperablePartition() {
               <button
                 onClick={() => {
                   setPocketType(opt.id);
-                  if (!opt.allowDoor) setHasPocketDoor(false);
+                  setHasPocketDoor(opt.hasDoor);
                 }}
                 className="w-full text-left p-2"
               >
                 <div className="flex justify-between items-start mb-2">
                   <h3
-                    className={`text-xl font-bold ${pocketType === opt.id ? "text-emerald-400" : "text-white"}`}
+                    className={`text-xl font-bold ${pocketType === opt.id && hasPocketDoor === opt.hasDoor ? "text-emerald-400" : "text-white"}`}
                   >
                     {opt.title}
                   </h3>
                   <div
                     className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
-                      pocketType === opt.id
+                      pocketType === opt.id && hasPocketDoor === opt.hasDoor
                         ? "border-emerald-500 bg-emerald-500"
                         : "border-white/20"
                     }`}
                   >
-                    {pocketType === opt.id && (
+                    {pocketType === opt.id && hasPocketDoor === opt.hasDoor && (
                       <div className="w-2 h-2 bg-black rounded-full" />
                     )}
                   </div>
@@ -735,30 +749,6 @@ export default function OperablePartition() {
                   {opt.description}
                 </p>
               </button>
-
-              {/* Pocket Door Toggle */}
-              {opt.allowDoor && pocketType === opt.id && (
-                <div className="mx-4 mb-2 pt-2 border-t border-white/10 animate-in slide-in-from-top-2 duration-300">
-                  <label className="flex items-center gap-2 cursor-pointer group">
-                    <div
-                      className={`w-12 h-7 rounded-full transition-colors relative ${hasPocketDoor ? "bg-emerald-500" : "bg-slate-700"}`}
-                    >
-                      <input
-                        type="checkbox"
-                        className="sr-only"
-                        checked={hasPocketDoor}
-                        onChange={(e) => setHasPocketDoor(e.target.checked)}
-                      />
-                      <div
-                        className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-transform shadow-md ${hasPocketDoor ? "left-[22px]" : "left-1"}`}
-                      />
-                    </div>
-                    <span className="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors">
-                      Include Pocket Door
-                    </span>
-                  </label>
-                </div>
-              )}
             </div>
           ))}
         </div>
@@ -1054,13 +1044,13 @@ export default function OperablePartition() {
     const options = [
       {
         id: "automatic" as BottomSealType,
-        title: "Automatic Bottom Seal",
+        title: "SureSet™ Automatic",
         description:
           "Seal automatically extends when the partition is expanded. No manual operation required.",
       },
       {
         id: "operable" as BottomSealType,
-        title: "Operable Bottom Seal",
+        title: "SureSet™ Manual",
         description:
           "Manually crank-operated seal for maximum acoustic performance and leveling control.",
       },
@@ -1116,31 +1106,43 @@ export default function OperablePartition() {
 
   const renderFinishStep = () => {
     const options = [
-      {
-        id: "tba" as FinishType,
-        title: "To Be Advised",
-        description: "Finish selection will be decided later.",
-      },
-      {
-        id: "vinyl" as FinishType,
-        title: "Vinyl",
-        description: "Standard commercial grade vinyl covering.",
-      },
-      {
-        id: "fabric" as FinishType,
-        title: "Fabric",
-        description: "Acoustically transparent fabric options.",
-      },
-      {
-        id: "carpet" as FinishType,
-        title: "Carpet",
-        description: "Heavy-duty acoustic carpet.",
-      },
-      {
-        id: "com" as FinishType,
-        title: "Customer's Own (COM)",
-        description: "Send your own material for application.",
-      },
+      { id: "tba" as FinishType, title: "To Be Advised" },
+      { id: "lotus" as FinishType, title: "Lotus" },
+      { id: "adrift" as FinishType, title: "Adrift" },
+      { id: "reed_arani" as FinishType, title: "Reed (Arani)" },
+      { id: "sandalwood" as FinishType, title: "Sandalwood" },
+      { id: "veranda" as FinishType, title: "Veranda" },
+      { id: "slate" as FinishType, title: "Slate" },
+      { id: "pumila_grass" as FinishType, title: "Pumila Grass" },
+      { id: "oats" as FinishType, title: "Oats" },
+      { id: "prairie" as FinishType, title: "Prairie" },
+      { id: "reed_lennon" as FinishType, title: "Reed (Lennon)" },
+      { id: "red_oat" as FinishType, title: "Red Oat" },
+      { id: "feather_grass" as FinishType, title: "Feather Grass" },
+      { id: "canvas" as FinishType, title: "Canvas" },
+      { id: "bobbin_weave" as FinishType, title: "Bobbin Weave" },
+      { id: "threads" as FinishType, title: "Threads" },
+      { id: "common_thread" as FinishType, title: "Common Thread" },
+      { id: "quill" as FinishType, title: "Quill" },
+      { id: "lustre" as FinishType, title: "Lustre" },
+      { id: "white" as FinishType, title: "White" },
+      { id: "silver_dust" as FinishType, title: "Silver Dust" },
+      { id: "cirrus" as FinishType, title: "Cirrus" },
+      { id: "camel_down" as FinishType, title: "Camel Down" },
+      { id: "cimmerin" as FinishType, title: "Cimmerin" },
+      { id: "carbon" as FinishType, title: "Carbon" },
+      { id: "arctic" as FinishType, title: "Arctic" },
+      { id: "serenity" as FinishType, title: "Serenity" },
+      { id: "grey_pearl" as FinishType, title: "Grey Pearl" },
+      { id: "willet" as FinishType, title: "Willet" },
+      { id: "windrift" as FinishType, title: "Windrift" },
+      { id: "hemp" as FinishType, title: "Hemp" },
+      { id: "b_white" as FinishType, title: "B. White" },
+      { id: "eggshell" as FinishType, title: "Eggshell" },
+      { id: "frost_taupe" as FinishType, title: "Frost Taupe" },
+      { id: "aspen" as FinishType, title: "Aspen" },
+      { id: "denver" as FinishType, title: "Denver" },
+      { id: "black" as FinishType, title: "Black" },
     ];
 
     return (
@@ -1169,7 +1171,6 @@ export default function OperablePartition() {
                 >
                   {opt.title}
                 </h3>
-                <p className="text-slate-500 text-xs mt-1">{opt.description}</p>
               </div>
               <div
                 className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
@@ -1571,7 +1572,7 @@ export default function OperablePartition() {
                 </h1>
               </div>
 
-              {/* Radial Step Tracker (compact) */} 
+              {/* Radial Step Tracker (compact) */}
               <div className="flex gap-2 mb-2 flex-wrap">
                 {STEP_ORDER.map((id, idx) => {
                   const isActive = currentStep === id;
