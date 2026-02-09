@@ -484,8 +484,8 @@ export default function OperablePartition() {
                 </label>
                 <input
                   type="number"
-                  defaultValue={value.feet || ""}
-                  onBlur={(e) =>
+                  value={value.feet ?? ""}
+                  onChange={(e) =>
                     onChange({ ...value, feet: Number(e.target.value) })
                   }
                   className="bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all font-mono text-sm"
@@ -498,8 +498,8 @@ export default function OperablePartition() {
                 </label>
                 <input
                   type="number"
-                  defaultValue={value.inchMain || ""}
-                  onBlur={(e) =>
+                  value={value.inchMain ?? ""}
+                  onChange={(e) =>
                     onChange({ ...value, inchMain: Number(e.target.value) })
                   }
                   className="bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all font-mono text-sm"
@@ -513,8 +513,8 @@ export default function OperablePartition() {
                 <div className="flex items-center gap-2">
                   <input
                     type="number"
-                    defaultValue={value.numerator || ""}
-                    onBlur={(e) =>
+                    value={value.numerator ?? ""}
+                    onChange={(e) =>
                       onChange({ ...value, numerator: Number(e.target.value) })
                     }
                     className="bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all w-full font-mono text-center text-sm"
@@ -523,8 +523,8 @@ export default function OperablePartition() {
                   <span className="text-white/20 font-light text-2xl">/</span>
                   <input
                     type="number"
-                    defaultValue={value.denominator || ""}
-                    onBlur={(e) =>
+                    value={value.denominator ?? ""}
+                    onChange={(e) =>
                       onChange({
                         ...value,
                         denominator: Number(e.target.value),
@@ -546,8 +546,8 @@ export default function OperablePartition() {
               <input
                 type="number"
                 step="0.01"
-                defaultValue={value.inches || ""}
-                onBlur={(e) =>
+                value={value.inches ?? ""}
+                onChange={(e) =>
                   onChange({ ...value, inches: Number(e.target.value) })
                 }
                 className="bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all font-mono text-sm"
@@ -564,8 +564,8 @@ export default function OperablePartition() {
               <input
                 type="number"
                 step="0.1"
-                defaultValue={value.millimeters || ""}
-                onBlur={(e) =>
+                value={value.millimeters ?? ""}
+                onChange={(e) =>
                   onChange({ ...value, millimeters: Number(e.target.value) })
                 }
                 className="bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all font-mono text-sm"
@@ -1576,16 +1576,26 @@ export default function OperablePartition() {
               <div className="flex gap-2 mb-2 flex-wrap">
                 {STEP_ORDER.map((id, idx) => {
                   const isActive = currentStep === id;
+                  const currentIndex = STEP_ORDER.indexOf(currentStep);
+                  const nextStepId = STEP_ORDER[currentIndex + 1];
+                  const isNext = id === nextStepId;
+                  const isCurrentComplete = isStepComplete(currentStep);
                   const isCompleted =
                     id === "summary"
                       ? currentStep === "summary" && isFormComplete()
                       : isStepComplete(id);
+                  const isNextEnabled = isNext && isCurrentComplete;
+                  const isDisabled = idx > currentIndex && !isNextEnabled;
                   return (
                     <button
                       key={id}
-                      onClick={() => goToStep(id)}
+                      onClick={() => {
+                        if (isDisabled) return;
+                        goToStep(id);
+                      }}
                       aria-current={isActive}
-                      className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black transition-all ${isCompleted ? `bg-${ACCENT} text-black` : "bg-white/5 text-slate-500"} ${isActive ? "ring-2 ring-emerald-400/70 ring-offset-1 ring-offset-black" : ""}`}
+                      disabled={isDisabled}
+                      className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black transition-all ${isCompleted ? `bg-${ACCENT} text-black` : "bg-white/5 text-slate-500"} ${isNextEnabled && !isActive && !isCompleted ? "ring-1 ring-emerald-400/40 text-emerald-400/80" : ""} ${isActive ? "ring-2 ring-emerald-400/70" : ""} ${isDisabled ? "opacity-60 cursor-not-allowed" : ""}`}
                       title={`${idx + 1}. ${STEP_LABELS[id]}`}
                     >
                       {idx + 1}
@@ -1604,8 +1614,8 @@ export default function OperablePartition() {
                     </label>
                     <input
                       type="text"
-                      defaultValue={location}
-                      onBlur={(e) => setLocation(e.target.value)}
+                      value={location}
+                      onChange={(e) => setLocation(e.target.value)}
                       placeholder="EX: BALLROOM A, OFFICE 201..."
                       className="w-full bg-transparent border-none px-2 py-2 text-white text-sm focus:outline-none"
                     />

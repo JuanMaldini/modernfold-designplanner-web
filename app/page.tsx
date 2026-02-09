@@ -11,35 +11,6 @@ export default function Home() {
                         Start app
                     </button>
                 </Link>
-
-                <Link href="/send-email">
-                    <button className="rounded bg-blue-500 px-4 py-2 font-bold text-white hover:bg-blue-700">
-                        Send email
-                    </button>
-                </Link>
-            </div>
-
-            <div className='flex flex-wrap gap-2'>
-                <Link href="/partition-operable">
-                    <button className="rounded bg-blue-500 px-4 py-2 font-bold text-white hover:bg-blue-700">
-                        Operable Partition
-                    </button>
-                </Link>
-                <Link href="/partition-glass">
-                    <button className="rounded bg-blue-500 px-4 py-2 font-bold text-white hover:bg-blue-700">
-                        Glass Partition
-                    </button>
-                </Link>
-                <Link href="/partition-acousti-clear">
-                    <button disabled className="rounded bg-blue-500 px-4 py-2 font-bold text-white saturate-0">
-                        Acousti-Clear Partition
-                    </button>
-                </Link>
-                <Link href="/partition-accordion">
-                    <button disabled className="rounded bg-blue-500 px-4 py-2 font-bold text-white saturate-0">
-                        Accordion Partition
-                    </button>
-                </Link>
             </div>
 
         </main>
