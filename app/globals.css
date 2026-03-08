@@ -75,18 +75,3 @@
     border-color: #e2e8f0 !important;
   }
 }
-
-/* n8n chat widget positioning */
-.chat-window-wrapper.n8n-chat {
-  left: var(--chat--window--right, var(--chat--spacing));
-  right: auto;
-}
-
-@media (max-width: 767px) {
-  /* When layout stacks, pin chat toggle to the iframe (top half) */
-  .chat-window-wrapper.n8n-chat {
-    bottom: calc(50vh + var(--chat--window--bottom, var(--chat--spacing)));
-    left: var(--chat--window--right, var(--chat--spacing));
-    right: auto;
-  }
-}

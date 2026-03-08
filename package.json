@@ -10,12 +10,12 @@
   },
   "dependencies": {
     "@aws-sdk/client-ses": "^3.981.0",
-    "@n8n/chat": "^1.7.0",
     "@react-email/components": "^1.0.6",
     "@react-email/render": "^2.0.4",
     "next": "^16.1.6",
     "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "react-dom": "^19.1.1",
+    "react-icons": "^5.6.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.18",

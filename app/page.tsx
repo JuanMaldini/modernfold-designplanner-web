@@ -1,7 +1,6 @@
 "use client";
 import { useRef, useEffect, useState } from "react";
 import Sidepanel from "./design-planner/sidepanel/Sidepanel";
-import "@n8n/chat/dist/style.css";
 import Script from "next/script";
 
 function VagonPlayer() {
@@ -14,33 +13,6 @@ function VagonPlayer() {
     }
   }, []);
 
-  useEffect(() => {
-    import("@n8n/chat")
-      .then(({ createChat }) => {
-        const webhookUrl =
-          process.env.NODE_ENV === "development"
-            ? "http://localhost:5678/webhook/f4f1ffe0-dee2-472c-90d0-95ffd6919067/chat"
-            : "";
-
-        createChat({
-          webhookUrl,
-          mode: "window",
-          showWelcomeScreen: true,
-          initialMessages: ["Do you need guidance to build some steps?"],
-          i18n: {
-            en: {
-              title: "Hello",
-              subtitle: "Need help to build your system?",
-              footer: "",
-              getStarted: "New Conversation",
-              inputPlaceholder: "Type your question...",
-              closeButtonTooltip: "Close Chat",
-            },
-          },
-        });
-      })
-      .catch((err) => console.error("Failed to load chat widget", err));
-  }, []);
 
   return (
     <div className="flex flex-col md:flex-row w-full h-screen">
