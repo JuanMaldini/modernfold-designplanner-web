@@ -6,6 +6,7 @@ import GlassPartition from "../../partition-glass/page";
 import PreconfiguredPartition from "../../preconfigured/preconfigured";
 
 export default function Sidepanel() {
+  const card = "bg-white border border-slate-200 rounded-xl p-3 shadow-sm";
   const [lastCommand, setLastCommand] = useState<string>(
     "No commands sent yet",
   );
@@ -23,16 +24,20 @@ export default function Sidepanel() {
   };
 
   return (
-    <div className="modernfold-light bg-slate-50 text-slate-800 w-full h-full overflow-y-auto">
-      <div className="mt-2 flex flex-col gap-3">
-        <div className="flex items-center px-2">
-          {codeMode ? (
+    <div
+      className="modernfold-light bg-slate-50 text-slate-800 w-full h-full overflow-y-auto"
+      style={{ scrollbarGutter: "stable" }}
+    >
+      <div className="mt-2">
+        <div className="w-full max-w-5xl mx-auto px-3 md:px-5">
+          <div className={`${card} flex items-center`}>
+            {codeMode ? (
             <input
               type="text"
               value={codeValue}
               onChange={(e) => setCodeValue(e.target.value)}
               placeholder="Enter pre-configured code…"
-              className="flex-1 px-3 py-2 mr-2 rounded-lg text-xs font-medium bg-white text-slate-800 ring-1 ring-inset ring-emerald-400 focus:outline-none focus:ring-emerald-500 placeholder:text-slate-400"
+              className="flex-1 px-3 py-2 mr-2 rounded-md text-xs font-medium bg-white text-slate-800 border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 placeholder:text-slate-400"
             />
           ) : (
             <>
@@ -81,33 +86,30 @@ export default function Sidepanel() {
               </button>
             </>
           )}
-          <button
-            onClick={() => setCodeMode((prev) => !prev)}
-            className={`shrink-0 px-3 py-2 rounded-lg text-xs font-bold ${
-              codeMode
-                ? "bg-emerald-600 text-white ring-1 ring-inset ring-emerald-600"
-                : "bg-white text-slate-700 ring-1 ring-inset ring-slate-200 hover:ring-slate-300"
-            }`}
-          >
-            Code
-          </button>
+            <button
+              onClick={() => setCodeMode((prev) => !prev)}
+              className={`shrink-0 px-3 py-2 rounded-lg text-xs font-bold ${
+                codeMode
+                  ? "bg-emerald-600 text-white ring-1 ring-inset ring-emerald-600"
+                  : "bg-white text-slate-700 ring-1 ring-inset ring-slate-200 hover:ring-slate-300"
+              }`}
+            >
+              Code
+            </button>
+          </div>
         </div>
       </div>
 
       <div className="pt-2">
-        <div>
-          <div className="overflow-y-auto">
-            {codeMode ? (
-              <PreconfiguredPartition />
-            ) : activePartition === "operable" ? (
-              <OperablePartition />
-            ) : activePartition === "glass" ? (
-              <GlassPartition />
-            ) : (
-              <div />
-            )}
-          </div>
-        </div>
+        {codeMode ? (
+          <PreconfiguredPartition />
+        ) : activePartition === "operable" ? (
+          <OperablePartition />
+        ) : activePartition === "glass" ? (
+          <GlassPartition />
+        ) : (
+          <div />
+        )}
       </div>
     </div>
   );

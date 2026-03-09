@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { buildGlassJson } from "@/app/api/formatter";
 
 type DimensionMode = "inches" | "feet-inches" | "metric";
@@ -50,7 +50,7 @@ interface ProjectInfo {
 
 export default function GlassPartition() {
   const ACCENT = "emerald-600";
-  const card = "bg-white border border-slate-200 rounded-md p-2 shadow-sm";
+  const card = "bg-white border border-slate-200 rounded-xl p-3 shadow-sm";
   const smallBtn = "px-3 py-2 rounded-md text-sm font-bold";
   const STEP_ORDER: Step[] = [
     "dimensions",
@@ -88,6 +88,8 @@ export default function GlassPartition() {
     () => new Set(["dimensions"]),
   );
   const [location, setLocation] = useState("");
+  const [dimensionMode, setDimensionMode] =
+    useState<DimensionMode>("feet-inches");
   const [width, setWidth] = useState<DimensionValue>({
     mode: "feet-inches",
     feet: 0,
@@ -219,6 +221,24 @@ export default function GlassPartition() {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   };
 
+  const formatDimensionForSummary = (value: DimensionValue) => {
+    if (value.mode === "feet-inches") {
+      const feet = value.feet || 0;
+      const inches = value.inchMain || 0;
+      const numerator = value.numerator || 0;
+      const denominator = value.denominator || 0;
+      const fraction =
+        denominator > 0 && numerator > 0 ? ` ${numerator}/${denominator}` : "";
+      return `${feet}' ${inches}"${fraction}`.trim();
+    }
+
+    if (value.mode === "inches") {
+      return `${value.inches || 0} in`;
+    }
+
+    return `${value.millimeters || 0} mm`;
+  };
+
   const getUserName = () => {
     return (
       projectInfo.contactPerson.trim() ||
@@ -230,8 +250,8 @@ export default function GlassPartition() {
   const buildJsonPayload = () => {
     return buildGlassJson({
       location,
-      width,
-      height,
+      width: { ...width, mode: dimensionMode },
+      height: { ...height, mode: dimensionMode },
       panelConfig,
       pocketType,
       hasPocketDoor,
@@ -380,6 +400,7 @@ export default function GlassPartition() {
 
   const resetForm = () => {
     setLocation("");
+    setDimensionMode("feet-inches");
     setWidth({
       mode: "feet-inches",
       feet: 0,
@@ -414,7 +435,14 @@ export default function GlassPartition() {
       email: "",
       phone: "",
     });
+    setVisitedSteps(new Set(["dimensions"]));
     setCurrentStep("dimensions");
+  };
+
+  const handleDimensionModeChange = (mode: DimensionMode) => {
+    setDimensionMode(mode);
+    setWidth((prev) => ({ ...prev, mode }));
+    setHeight((prev) => ({ ...prev, mode }));
   };
 
   const renderDimensionInput = (
@@ -422,131 +450,136 @@ export default function GlassPartition() {
     value: DimensionValue,
     onChange: (val: DimensionValue) => void,
   ) => {
-    return (
-      <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm transition-all hover:border-emerald-400/50 group">
-        <h3 className="text-md font-semibold mb-2 text-emerald-400 flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
-          {label}
-        </h3>
+    const renderInlineRow = (rowLabel: string, control: ReactNode) => (
+      <div className="grid grid-cols-[110px_1fr] md:grid-cols-[120px_1fr] items-center gap-2">
+        <label className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] text-left whitespace-nowrap">
+          {rowLabel}
+        </label>
+        {control}
+      </div>
+    );
 
-        <div className="flex gap-2 mb-6 bg-slate-100 p-1 rounded-xl w-fit border border-slate-200">
-          {(["feet-inches", "inches", "metric"] as DimensionMode[]).map(
-            (mode) => (
-              <button
-                key={mode}
-                onClick={() => onChange({ ...value, mode })}
-                className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
-                  value.mode === mode
-                    ? "bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-white"
-                }`}
-              >
-                {mode === "feet-inches"
-                  ? "Ft & In"
-                  : mode === "inches"
-                    ? "Inches"
-                    : "Metric"}
-              </button>
-            ),
-          )}
+    return (
+      <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm transition-all hover:border-emerald-400/50 group w-full">
+        <div className="mb-3 pb-2 border-b border-slate-200">
+          <h3 className="text-sm font-bold tracking-wide text-slate-700">
+            {label}
+          </h3>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 animate-in fade-in slide-in-from-bottom-2 duration-500">
-          {value.mode === "feet-inches" && (
-            <>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] ml-1">
-                  Feet
-                </label>
+        <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-500">
+          {dimensionMode === "feet-inches" && (
+            <div className="space-y-2">
+              {renderInlineRow(
+                "Feet",
                 <input
                   type="number"
                   value={value.feet ?? ""}
                   onChange={(e) =>
-                    onChange({ ...value, feet: Number(e.target.value) })
+                    onChange({
+                      ...value,
+                      mode: dimensionMode,
+                      feet: Number(e.target.value),
+                    })
                   }
-                  className="bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all font-mono text-sm"
+                  className="w-full bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all font-mono text-sm"
                   placeholder="0"
                 />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] ml-1">
-                  Inches
-                </label>
+              )}
+
+              {renderInlineRow(
+                "Inches",
                 <input
                   type="number"
                   value={value.inchMain ?? ""}
                   onChange={(e) =>
-                    onChange({ ...value, inchMain: Number(e.target.value) })
+                    onChange({
+                      ...value,
+                      mode: dimensionMode,
+                      inchMain: Number(e.target.value),
+                    })
                   }
-                  className="bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all font-mono text-sm"
+                  className="w-full bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all font-mono text-sm"
                   placeholder="0"
                 />
-              </div>
-              <div className="flex flex-col gap-1.5 md:col-span-2">
-                <label className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] ml-1">
-                  Fraction
-                </label>
-                <div className="flex items-center gap-2">
+              )}
+
+              {renderInlineRow(
+                "Fraction",
+                <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
                   <input
                     type="number"
                     value={value.numerator ?? ""}
                     onChange={(e) =>
-                      onChange({ ...value, numerator: Number(e.target.value) })
+                      onChange({
+                        ...value,
+                        mode: dimensionMode,
+                        numerator: Number(e.target.value),
+                      })
                     }
-                    className="bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all w-full font-mono text-center text-sm"
+                    className="bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all w-full font-mono text-sm"
                     placeholder="Num"
                   />
-                  <span className="text-white/20 font-light text-2xl">/</span>
+                  <span className="text-slate-400 font-light text-xl">/</span>
                   <input
                     type="number"
                     value={value.denominator ?? ""}
                     onChange={(e) =>
                       onChange({
                         ...value,
+                        mode: dimensionMode,
                         denominator: Number(e.target.value),
                       })
                     }
-                    className="bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all w-full font-mono text-center text-sm"
+                    className="bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all w-full font-mono text-sm"
                     placeholder="Den"
                   />
-                </div>
-              </div>
-            </>
+                </div>,
+              )}
+            </div>
           )}
 
-          {value.mode === "inches" && (
-            <div className="flex flex-col gap-1.5 col-span-4">
-              <label className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] ml-1">
-                Total Inches
-              </label>
+          {dimensionMode === "inches" && (
+            <div className="space-y-2">
+              {renderInlineRow(
+                "Total Inches",
               <input
                 type="number"
                 step="0.01"
                 value={value.inches ?? ""}
                 onChange={(e) =>
-                  onChange({ ...value, inches: Number(e.target.value) })
+                  onChange({
+                    ...value,
+                    mode: dimensionMode,
+                    inches: Number(e.target.value),
+                  })
                 }
-                className="bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all font-mono text-sm"
+                className="w-full bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all font-mono text-sm"
                 placeholder="0.00"
               />
+              )}
             </div>
           )}
 
-          {value.mode === "metric" && (
-            <div className="flex flex-col gap-1.5 col-span-4">
-              <label className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] ml-1">
-                Millimeters (mm)
-              </label>
+          {dimensionMode === "metric" && (
+            <div className="space-y-2">
+              {renderInlineRow(
+                "Millimeters (mm)",
               <input
                 type="number"
                 step="0.1"
                 value={value.millimeters ?? ""}
                 onChange={(e) =>
-                  onChange({ ...value, millimeters: Number(e.target.value) })
+                  onChange({
+                    ...value,
+                    mode: dimensionMode,
+                    millimeters: Number(e.target.value),
+                  })
                 }
-                className="bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all font-mono text-sm"
+                className="w-full bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all font-mono text-sm"
                 placeholder="0.0"
               />
+              )}
             </div>
           )}
         </div>
@@ -1326,36 +1359,40 @@ export default function GlassPartition() {
   };
 
   return (
-    <div className="modernfold-light bg-slate-50 text-slate-800 font-sans selection:bg-emerald-500/30 w-full min-h-full">
+    <div className="modernfold-light bg-slate-50 text-slate-800 font-sans selection:bg-emerald-500/30 w-full min-h-full pb-6">
       <div className="flex flex-col w-full">
         {/* Main Content */}
         <div className="w-full relative">
-          <div className="w-full p-1">
-            <header className="mb-3">
-              <div className="flex items-center gap-2 mb-2">
+          <div className="w-full max-w-5xl mx-auto px-3 md:px-5 py-3">
+            <header className={`${card} mb-4`}>
+              <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-200">
                 <div className="h-6 w-2 bg-[color:var(--accent,#10b981)] rounded-sm" />
-                <h1 className="text-xl font-black tracking-tight text-slate-600 flex items-baseline gap-2">
+                <h1 className="text-xl font-black tracking-tight text-slate-700 flex items-baseline gap-2">
                   Design Planner
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
                     {STEP_LABELS[currentStep]}
                   </span>
                 </h1>
               </div>
 
-              {/* Radial Step Tracker (compact) */}
-              <div className="flex gap-2 mb-2 flex-wrap">
+              <div className="flex gap-2 flex-wrap">
                 {STEP_ORDER.map((id, idx) => {
                   const isActive = currentStep === id;
                   const currentIndex = STEP_ORDER.indexOf(currentStep);
-                  const nextStepId = STEP_ORDER[currentIndex + 1];
-                  const isNext = id === nextStepId;
+                  const furthestReachedIndex = Math.max(
+                    ...Array.from(visitedSteps).map((step) =>
+                      STEP_ORDER.indexOf(step),
+                    ),
+                  );
                   const isCurrentComplete = isStepComplete(currentStep);
                   const isCompleted =
                     id === "summary"
                       ? currentStep === "summary" && isFormComplete()
                       : isStepComplete(id);
-                  const isNextEnabled = isNext && isCurrentComplete;
-                  const isDisabled = idx > currentIndex && !isNextEnabled;
+                  const isNextEnabled =
+                    idx === furthestReachedIndex + 1 && isCurrentComplete;
+                  const isUnlockedByHistory = idx <= furthestReachedIndex;
+                  const isDisabled = !(isUnlockedByHistory || isNextEnabled);
                   return (
                     <button
                       key={id}
@@ -1375,22 +1412,54 @@ export default function GlassPartition() {
               </div>
             </header>
 
-            <section className="space-y-2">
+            <section className="space-y-3">
               {currentStep === "dimensions" && (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <div className={`${card} w-full`}>
-                    <label className="block text-xs text-slate-400 uppercase font-bold mb-1">
-                      Partition Location
-                    </label>
-                    <input
-                      type="text"
-                      value={location}
-                      onChange={(e) => setLocation(e.target.value)}
-                      placeholder="EX: BALLROOM A, OFFICE 201..."
-                      className="w-full bg-transparent border-none px-2 py-2 text-white text-sm focus:outline-none"
-                    />
+                    <div className="mb-3 pb-2 border-b border-slate-200">
+                      <h3 className="text-sm font-bold tracking-wide text-slate-700">
+                        Partition Location
+                      </h3>
+                    </div>
+                    <div>
+                      <input
+                        type="text"
+                        value={location}
+                        onChange={(e) => setLocation(e.target.value)}
+                        placeholder="Location name"
+                        className="w-full bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-2">
+                  <div className={`${card} w-full`}>
+                    <div className="mb-3 pb-2 border-b border-slate-200">
+                      <h3 className="text-sm font-bold tracking-wide text-slate-700">
+                        Dimension Unit
+                      </h3>
+                    </div>
+                    <div className="grid grid-flow-col auto-cols-max gap-1 bg-slate-100 p-0.5 rounded-lg w-full border border-slate-200 overflow-x-auto">
+                      {(["feet-inches", "inches", "metric"] as DimensionMode[]).map(
+                        (mode) => (
+                          <button
+                            key={mode}
+                            onClick={() => handleDimensionModeChange(mode)}
+                            className={`px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wide whitespace-nowrap transition-all ${
+                              dimensionMode === mode
+                                ? "bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
+                                : "text-slate-600 hover:text-slate-900 hover:bg-white"
+                            }`}
+                          >
+                            {mode === "feet-inches"
+                              ? "Ft & In"
+                              : mode === "inches"
+                                ? "Inches"
+                                : "Metric"}
+                          </button>
+                        ),
+                      )}
+                    </div>
+                  </div>
+                  <div className="space-y-3">
                     {renderDimensionInput("Opening Width", width, setWidth)}
                     {renderDimensionInput("Opening Height", height, setHeight)}
                   </div>
@@ -1472,11 +1541,17 @@ export default function GlassPartition() {
                       <span className="text-right">{location}</span>
                       <span className="text-slate-500">Width:</span>{" "}
                       <span className="text-right">
-                        {width.feet}' {width.inchMain}"
+                        {formatDimensionForSummary({
+                          ...width,
+                          mode: dimensionMode,
+                        })}
                       </span>
                       <span className="text-slate-500">Height:</span>{" "}
                       <span className="text-right">
-                        {height.feet}' {height.inchMain}"
+                        {formatDimensionForSummary({
+                          ...height,
+                          mode: dimensionMode,
+                        })}
                       </span>
                     </div>
 

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { buildOperableJson } from "@/app/api/formatter";
 
 type DimensionMode = "inches" | "feet-inches" | "metric";
@@ -52,7 +52,7 @@ interface ProjectInfo {
 
 export default function OperablePartition() {
   const ACCENT = "emerald-600";
-  const card = "bg-white border border-slate-200 rounded-md p-2 shadow-sm";
+  const card = "bg-white border border-slate-200 rounded-xl p-3 shadow-sm";
   const smallBtn = "px-3 py-2 rounded-md text-sm font-bold";
   const STEP_ORDER: Step[] = [
     "dimensions",
@@ -92,6 +92,8 @@ export default function OperablePartition() {
     () => new Set(["dimensions"]),
   );
   const [location, setLocation] = useState("");
+  const [dimensionMode, setDimensionMode] =
+    useState<DimensionMode>("feet-inches");
   const [width, setWidth] = useState<DimensionValue>({
     mode: "feet-inches",
     feet: 0,
@@ -230,6 +232,24 @@ export default function OperablePartition() {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   };
 
+  const formatDimensionForSummary = (value: DimensionValue) => {
+    if (value.mode === "feet-inches") {
+      const feet = value.feet || 0;
+      const inches = value.inchMain || 0;
+      const numerator = value.numerator || 0;
+      const denominator = value.denominator || 0;
+      const fraction =
+        denominator > 0 && numerator > 0 ? ` ${numerator}/${denominator}` : "";
+      return `${feet}' ${inches}"${fraction}`.trim();
+    }
+
+    if (value.mode === "inches") {
+      return `${value.inches || 0} in`;
+    }
+
+    return `${value.millimeters || 0} mm`;
+  };
+
   const getUserName = () => {
     return (
       projectInfo.contactPerson.trim() ||
@@ -241,8 +261,8 @@ export default function OperablePartition() {
   const buildJsonPayload = () => {
     return buildOperableJson({
       location,
-      width,
-      height,
+      width: { ...width, mode: dimensionMode },
+      height: { ...height, mode: dimensionMode },
       panelConfig,
       pocketType,
       hasPocketDoor,
@@ -267,6 +287,7 @@ export default function OperablePartition() {
 
     setIsSending(true);
     try {
+      const jsonPayload = buildJsonPayload();
       const response = await fetch("/api/email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -274,11 +295,18 @@ export default function OperablePartition() {
           to: "unreal@vanishingpoint3d.com",
           userName: getUserName(),
           userEmail: projectInfo.email,
-          jsonData: buildJsonPayload(),
+          jsonData: jsonPayload,
         }),
       });
 
-      const data = await response.json();
+      const raw = await response.text();
+      let data: { error?: string } = {};
+      try {
+        data = raw ? JSON.parse(raw) : {};
+      } catch {
+        data = {};
+      }
+
       if (!response.ok) {
         alert(`Error: ${data.error || "Error al enviar el correo"}`);
         return;
@@ -294,21 +322,25 @@ export default function OperablePartition() {
 
   const handleDownloadJson = () => {
     if (!isFormComplete() || !isEmailValid(projectInfo.email)) return;
-    const jsonData = buildJsonPayload();
-    const fileName = `quota-request-${getUserName()
-      .replace(/\s+/g, "-")
-      .toLowerCase()}.json`;
-    const blob = new Blob([JSON.stringify(jsonData, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
+    try {
+      const jsonData = buildJsonPayload();
+      const fileName = `quote-request-${getUserName()
+        .replace(/\s+/g, "-")
+        .toLowerCase()}.json`;
+      const blob = new Blob([JSON.stringify(jsonData, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      alert("Error al generar el archivo JSON");
+    }
   };
 
   const handleNextStep = () => {
@@ -398,6 +430,7 @@ export default function OperablePartition() {
 
   const resetForm = () => {
     setLocation("");
+    setDimensionMode("feet-inches");
     setWidth({
       mode: "feet-inches",
       feet: 0,
@@ -436,7 +469,14 @@ export default function OperablePartition() {
       email: "",
       phone: "",
     });
+    setVisitedSteps(new Set(["dimensions"]));
     setCurrentStep("dimensions");
+  };
+
+  const handleDimensionModeChange = (mode: DimensionMode) => {
+    setDimensionMode(mode);
+    setWidth((prev) => ({ ...prev, mode }));
+    setHeight((prev) => ({ ...prev, mode }));
   };
 
   const renderDimensionInput = (
@@ -444,134 +484,140 @@ export default function OperablePartition() {
     value: DimensionValue,
     onChange: (val: DimensionValue) => void,
   ) => {
-    return (
-      <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm transition-all hover:border-emerald-400/50 group">
-        <h3 className="text-md font-semibold mb-2 text-emerald-400 flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
-          {label}
-        </h3>
+    const renderInlineRow = (rowLabel: string, control: ReactNode) => (
+      <div className="grid grid-cols-[110px_1fr] md:grid-cols-[120px_1fr] items-center gap-2">
+        <label className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] text-left whitespace-nowrap">
+          {rowLabel}
+        </label>
+        {control}
+      </div>
+    );
 
-        <div className="flex gap-2 mb-6 bg-slate-100 p-1 rounded-xl w-fit border border-slate-200">
-          {(["feet-inches", "inches", "metric"] as DimensionMode[]).map(
-            (mode) => (
-              <button
-                key={mode}
-                onClick={() => onChange({ ...value, mode })}
-                className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
-                  value.mode === mode
-                    ? "bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-white"
-                }`}
-              >
-                {mode === "feet-inches"
-                  ? "Ft & In"
-                  : mode === "inches"
-                    ? "Inches"
-                    : "Metric"}
-              </button>
-            ),
-          )}
+    return (
+      <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm transition-all hover:border-emerald-400/50 group w-full">
+        <div className="mb-3 pb-2 border-b border-slate-200">
+          <h3 className="text-sm font-bold tracking-wide text-slate-700">
+            {label}
+          </h3>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 animate-in fade-in slide-in-from-bottom-2 duration-500">
-          {value.mode === "feet-inches" && (
-            <>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] ml-1">
-                  Feet
-                </label>
+          <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-500">
+          {dimensionMode === "feet-inches" && (
+            <div className="space-y-2">
+              {renderInlineRow(
+                "Feet",
                 <input
                   type="number"
                   value={value.feet ?? ""}
                   onChange={(e) =>
-                    onChange({ ...value, feet: Number(e.target.value) })
+                    onChange({
+                      ...value,
+                      mode: dimensionMode,
+                      feet: Number(e.target.value),
+                    })
                   }
-                  className="bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all font-mono text-sm"
+                  className="w-full bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all font-mono text-sm"
                   placeholder="0"
                 />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] ml-1">
-                  Inches
-                </label>
+              )}
+
+              {renderInlineRow(
+                "Inches",
                 <input
                   type="number"
                   value={value.inchMain ?? ""}
                   onChange={(e) =>
-                    onChange({ ...value, inchMain: Number(e.target.value) })
+                    onChange({
+                      ...value,
+                      mode: dimensionMode,
+                      inchMain: Number(e.target.value),
+                    })
                   }
-                  className="bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all font-mono text-sm"
+                  className="w-full bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all font-mono text-sm"
                   placeholder="0"
                 />
-              </div>
-              <div className="flex flex-col gap-1.5 md:col-span-2">
-                <label className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] ml-1">
-                  Fraction
-                </label>
-                <div className="flex items-center gap-2">
+              )}
+
+              {renderInlineRow(
+                "Fraction",
+                <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
                   <input
                     type="number"
                     value={value.numerator ?? ""}
                     onChange={(e) =>
-                      onChange({ ...value, numerator: Number(e.target.value) })
+                      onChange({
+                        ...value,
+                        mode: dimensionMode,
+                        numerator: Number(e.target.value),
+                      })
                     }
-                    className="bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all w-full font-mono text-center text-sm"
+                    className="bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all w-full font-mono text-sm"
                     placeholder="Num"
                   />
-                  <span className="text-white/20 font-light text-2xl">/</span>
+                  <span className="text-slate-400 font-light text-xl">/</span>
                   <input
                     type="number"
                     value={value.denominator ?? ""}
                     onChange={(e) =>
                       onChange({
                         ...value,
+                        mode: dimensionMode,
                         denominator: Number(e.target.value),
                       })
                     }
-                    className="bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all w-full font-mono text-center text-sm"
+                    className="bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all w-full font-mono text-sm"
                     placeholder="Den"
                   />
-                </div>
-              </div>
-            </>
+                </div>,
+              )}
+            </div>
           )}
 
-          {value.mode === "inches" && (
-            <div className="flex flex-col gap-1.5 col-span-4">
-              <label className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] ml-1">
-                Total Inches
-              </label>
+          {dimensionMode === "inches" && (
+            <div className="space-y-2">
+              {renderInlineRow(
+                "Total Inches",
               <input
                 type="number"
                 step="0.01"
                 value={value.inches ?? ""}
                 onChange={(e) =>
-                  onChange({ ...value, inches: Number(e.target.value) })
+                  onChange({
+                    ...value,
+                    mode: dimensionMode,
+                    inches: Number(e.target.value),
+                  })
                 }
-                className="bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all font-mono text-sm"
+                className="w-full bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all font-mono text-sm"
                 placeholder="0.00"
               />
+              )}
             </div>
           )}
 
-          {value.mode === "metric" && (
-            <div className="flex flex-col gap-1.5 col-span-4">
-              <label className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] ml-1">
-                Millimeters (mm)
-              </label>
+          {dimensionMode === "metric" && (
+            <div className="space-y-2">
+              {renderInlineRow(
+                "Millimeters (mm)",
               <input
                 type="number"
                 step="0.1"
                 value={value.millimeters ?? ""}
                 onChange={(e) =>
-                  onChange({ ...value, millimeters: Number(e.target.value) })
+                  onChange({
+                    ...value,
+                    mode: dimensionMode,
+                    millimeters: Number(e.target.value),
+                  })
                 }
-                className="bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all font-mono text-sm"
+                className="w-full bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all font-mono text-sm"
                 placeholder="0.0"
               />
+              )}
             </div>
           )}
-        </div>
+
+          </div>
       </div>
     );
   };
@@ -603,8 +649,8 @@ export default function OperablePartition() {
 
     return (
       <div className="space-y-3 animate-in fade-in slide-in-from-right-4 duration-500">
-        <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm mb-2">
-          <h2 className="text-2xl font-bold text-white mb-2">
+        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm mb-2">
+          <h2 className="text-xl font-bold text-slate-700 mb-1">
             Select Panel Configuration
           </h2>
           <p className="text-slate-600 text-sm">
@@ -617,7 +663,7 @@ export default function OperablePartition() {
             <button
               key={opt.id}
               onClick={() => setPanelConfig(opt.id)}
-              className={`text-left p-2 rounded-2xl border transition-all ${
+              className={`text-left p-3 rounded-xl border transition-all ${
                 panelConfig === opt.id
                   ? "bg-emerald-500/10 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.1)]"
                   : "bg-white border-slate-200 hover:border-slate-300"
@@ -625,7 +671,7 @@ export default function OperablePartition() {
             >
               <div className="flex justify-between items-start mb-2">
                 <h3
-                  className={`text-xl font-bold ${panelConfig === opt.id ? "text-emerald-400" : "text-white"}`}
+                  className={`text-lg font-bold ${panelConfig === opt.id ? "text-emerald-600" : "text-slate-700"}`}
                 >
                   {opt.title}
                 </h3>
@@ -633,7 +679,7 @@ export default function OperablePartition() {
                   className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
                     panelConfig === opt.id
                       ? "border-emerald-500 bg-emerald-500"
-                      : "border-white/20"
+                      : "border-slate-300"
                   }`}
                 >
                   {panelConfig === opt.id && (
@@ -644,7 +690,7 @@ export default function OperablePartition() {
               <p className="text-slate-600 text-sm mb-2 leading-relaxed">
                 {opt.description}
               </p>
-              <div className="pt-2 border-t border-white/5">
+              <div className="pt-2 border-t border-slate-200">
                 <span className="text-[10px] text-slate-500 uppercase font-black tracking-widest block mb-1">
                   Common Applications
                 </span>
@@ -699,11 +745,11 @@ export default function OperablePartition() {
 
     return (
       <div className="space-y-3 animate-in fade-in slide-in-from-right-4 duration-500">
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-sm mb-2">
-          <h2 className="text-2xl font-bold text-white mb-2">
+        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm mb-2">
+          <h2 className="text-xl font-bold text-slate-700 mb-1">
             Select Storage Condition
           </h2>
-          <p className="text-slate-400 text-sm">
+          <p className="text-slate-600 text-sm">
             Define how and where the panels will be stored when not in use.
           </p>
         </div>
@@ -712,10 +758,10 @@ export default function OperablePartition() {
           {options.map((opt, index) => (
             <div
               key={`${opt.id}-${opt.hasDoor}-${index}`}
-              className={`relative rounded-2xl border transition-all ${
+              className={`relative rounded-xl border transition-all ${
                 pocketType === opt.id && hasPocketDoor === opt.hasDoor
                   ? "bg-emerald-500/10 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.1)]"
-                  : "bg-white/5 border-white/10 hover:border-white/20"
+                  : "bg-white border-slate-200 hover:border-slate-300"
               }`}
             >
               <button
@@ -723,11 +769,11 @@ export default function OperablePartition() {
                   setPocketType(opt.id);
                   setHasPocketDoor(opt.hasDoor);
                 }}
-                className="w-full text-left p-2"
+                className="w-full text-left p-3"
               >
                 <div className="flex justify-between items-start mb-2">
                   <h3
-                    className={`text-xl font-bold ${pocketType === opt.id && hasPocketDoor === opt.hasDoor ? "text-emerald-400" : "text-white"}`}
+                    className={`text-lg font-bold ${pocketType === opt.id && hasPocketDoor === opt.hasDoor ? "text-emerald-600" : "text-slate-700"}`}
                   >
                     {opt.title}
                   </h3>
@@ -735,7 +781,7 @@ export default function OperablePartition() {
                     className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
                       pocketType === opt.id && hasPocketDoor === opt.hasDoor
                         ? "border-emerald-500 bg-emerald-500"
-                        : "border-white/20"
+                        : "border-slate-300"
                     }`}
                   >
                     {pocketType === opt.id && hasPocketDoor === opt.hasDoor && (
@@ -743,7 +789,7 @@ export default function OperablePartition() {
                     )}
                   </div>
                 </div>
-                <p className="text-slate-400 text-sm leading-relaxed">
+                <p className="text-slate-600 text-sm leading-relaxed">
                   {opt.description}
                 </p>
               </button>
@@ -781,11 +827,11 @@ export default function OperablePartition() {
 
     return (
       <div className="space-y-3 animate-in fade-in slide-in-from-right-4 duration-500">
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-sm mb-2">
-          <h2 className="text-2xl font-bold text-white mb-2">
+        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm mb-2">
+          <h2 className="text-xl font-bold text-slate-700 mb-1">
             Select Panel Durability
           </h2>
-          <p className="text-slate-400 text-sm">
+          <p className="text-slate-600 text-sm">
             Choose the material construction based on expected usage intensity.
           </p>
         </div>
@@ -798,15 +844,15 @@ export default function OperablePartition() {
                 setDurability(opt.id);
                 setSTC(null); // Reset STC when durability changes to ensure validity
               }}
-              className={`text-left p-2 rounded-2xl border transition-all ${
+              className={`text-left p-3 rounded-xl border transition-all ${
                 durability === opt.id
                   ? "bg-emerald-500/10 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.1)]"
-                  : "bg-white/5 border-white/10 hover:border-white/20"
+                  : "bg-white border-slate-200 hover:border-slate-300"
               }`}
             >
               <div className="flex justify-between items-start mb-2">
                 <h3
-                  className={`text-xl font-bold ${durability === opt.id ? "text-emerald-400" : "text-white"}`}
+                  className={`text-lg font-bold ${durability === opt.id ? "text-emerald-600" : "text-slate-700"}`}
                 >
                   {opt.title}
                 </h3>
@@ -814,7 +860,7 @@ export default function OperablePartition() {
                   className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
                     durability === opt.id
                       ? "border-emerald-500 bg-emerald-500"
-                      : "border-white/20"
+                      : "border-slate-300"
                   }`}
                 >
                   {durability === opt.id && (
@@ -822,17 +868,17 @@ export default function OperablePartition() {
                   )}
                 </div>
               </div>
-              <div className="inline-block px-2 py-1 bg-white/10 rounded-md text-[10px] font-mono text-emerald-200 mb-2">
+              <div className="inline-block px-2 py-1 bg-emerald-50 rounded-md text-[10px] font-mono text-emerald-700 mb-2">
                 {opt.material}
               </div>
-              <p className="text-slate-400 text-sm mb-2 leading-relaxed">
+              <p className="text-slate-600 text-sm mb-2 leading-relaxed">
                 {opt.description}
               </p>
-              <div className="pt-2 border-t border-white/5">
+              <div className="pt-2 border-t border-slate-200">
                 <span className="text-[10px] text-slate-500 uppercase font-black tracking-widest block mb-1">
                   Applications
                 </span>
-                <span className="text-xs text-slate-300 font-medium">
+                <span className="text-xs text-slate-600 font-medium">
                   {opt.app}
                 </span>
               </div>
@@ -853,11 +899,11 @@ export default function OperablePartition() {
 
     return (
       <div className="space-y-3 animate-in fade-in slide-in-from-right-4 duration-500">
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-sm mb-2">
-          <h2 className="text-2xl font-bold text-white mb-2">
+        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm mb-2">
+          <h2 className="text-xl font-bold text-slate-700 mb-1">
             Sound Transmission Class (STC)
           </h2>
-          <p className="text-slate-400 text-sm">
+          <p className="text-slate-600 text-sm">
             Select the level of desired speech privacy.
           </p>
         </div>
@@ -870,16 +916,16 @@ export default function OperablePartition() {
               className={`relative p-2 rounded-2xl border flex flex-col items-center justify-center gap-2 transition-all group ${
                 stc === val
                   ? "bg-emerald-500/10 border-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.2)]"
-                  : "bg-white/5 border-white/10 hover:border-emerald-500/50 hover:bg-emerald-500/5"
+                  : "bg-white border-slate-200 hover:border-emerald-500/50 hover:bg-emerald-50"
               }`}
             >
               <div
-                className={`text-3xl font-black tracking-tighter transition-colors ${stc === val ? "text-emerald-500" : "text-slate-700 group-hover:text-emerald-400/50"}`}
+                className={`text-3xl font-black tracking-tighter transition-colors ${stc === val ? "text-emerald-600" : "text-slate-700 group-hover:text-emerald-600"}`}
               >
                 {val}
               </div>
               <span
-                className={`text-xs font-bold uppercase tracking-widest ${stc === val ? "text-white" : "text-slate-500"}`}
+                className={`text-xs font-bold uppercase tracking-widest ${stc === val ? "text-emerald-700" : "text-slate-500"}`}
               >
                 STC Rating
               </span>
@@ -925,11 +971,11 @@ export default function OperablePartition() {
 
     return (
       <div className="space-y-3 animate-in fade-in slide-in-from-right-4 duration-500">
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-sm mb-2">
-          <h2 className="text-2xl font-bold text-white mb-2">
+        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm mb-2">
+          <h2 className="text-xl font-bold text-slate-700 mb-1">
             Select Closure Method
           </h2>
-          <p className="text-slate-400 text-sm">
+          <p className="text-slate-600 text-sm">
             Choose how the final panel closes the opening.
           </p>
         </div>
@@ -939,15 +985,15 @@ export default function OperablePartition() {
             <button
               key={opt.id}
               onClick={() => setClosure(opt.id)}
-              className={`text-left p-2 rounded-2xl border transition-all ${
+              className={`text-left p-3 rounded-xl border transition-all ${
                 closure === opt.id
                   ? "bg-emerald-500/10 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.1)]"
-                  : "bg-white/5 border-white/10 hover:border-white/20"
+                  : "bg-white border-slate-200 hover:border-slate-300"
               }`}
             >
               <div className="flex justify-between items-start mb-2">
                 <h3
-                  className={`text-xl font-bold ${closure === opt.id ? "text-emerald-400" : "text-white"}`}
+                  className={`text-lg font-bold ${closure === opt.id ? "text-emerald-600" : "text-slate-700"}`}
                 >
                   {opt.title}
                 </h3>
@@ -955,7 +1001,7 @@ export default function OperablePartition() {
                   className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
                     closure === opt.id
                       ? "border-emerald-500 bg-emerald-500"
-                      : "border-white/20"
+                      : "border-slate-300"
                   }`}
                 >
                   {closure === opt.id && (
@@ -963,7 +1009,7 @@ export default function OperablePartition() {
                   )}
                 </div>
               </div>
-              <p className="text-slate-400 text-sm leading-relaxed">
+              <p className="text-slate-600 text-sm leading-relaxed">
                 {opt.description}
               </p>
             </button>
@@ -992,9 +1038,9 @@ export default function OperablePartition() {
 
     return (
       <div className="space-y-3 animate-in fade-in slide-in-from-right-4 duration-500">
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-sm mb-2">
-          <h2 className="text-2xl font-bold text-white mb-2">Track System</h2>
-          <p className="text-slate-400 text-sm">
+        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm mb-2">
+          <h2 className="text-xl font-bold text-slate-700 mb-1">Track System</h2>
+          <p className="text-slate-600 text-sm">
             Select the suspension system suitable for your configuration.
           </p>
         </div>
@@ -1004,15 +1050,15 @@ export default function OperablePartition() {
             <button
               key={opt.id}
               onClick={() => setTrack(opt.id)}
-              className={`text-left p-2 rounded-2xl border transition-all ${
+              className={`text-left p-3 rounded-xl border transition-all ${
                 track === opt.id
                   ? "bg-emerald-500/10 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.1)]"
-                  : "bg-white/5 border-white/10 hover:border-white/20"
+                  : "bg-white border-slate-200 hover:border-slate-300"
               }`}
             >
               <div className="flex justify-between items-start mb-2">
                 <h3
-                  className={`text-xl font-bold ${track === opt.id ? "text-emerald-400" : "text-white"}`}
+                  className={`text-lg font-bold ${track === opt.id ? "text-emerald-600" : "text-slate-700"}`}
                 >
                   {opt.title}
                 </h3>
@@ -1020,7 +1066,7 @@ export default function OperablePartition() {
                   className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
                     track === opt.id
                       ? "border-emerald-500 bg-emerald-500"
-                      : "border-white/20"
+                      : "border-slate-300"
                   }`}
                 >
                   {track === opt.id && (
@@ -1028,7 +1074,7 @@ export default function OperablePartition() {
                   )}
                 </div>
               </div>
-              <p className="text-slate-400 text-sm leading-relaxed">
+              <p className="text-slate-600 text-sm leading-relaxed">
                 {opt.description}
               </p>
             </button>
@@ -1056,9 +1102,9 @@ export default function OperablePartition() {
 
     return (
       <div className="space-y-3 animate-in fade-in slide-in-from-right-4 duration-500">
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-sm mb-2">
-          <h2 className="text-2xl font-bold text-white mb-2">Bottom Seal</h2>
-          <p className="text-slate-400 text-sm">
+        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm mb-2">
+          <h2 className="text-xl font-bold text-slate-700 mb-1">Bottom Seal</h2>
+          <p className="text-slate-600 text-sm">
             Select the method for sealing the bottom of the panels to the floor.
           </p>
         </div>
@@ -1068,15 +1114,15 @@ export default function OperablePartition() {
             <button
               key={opt.id}
               onClick={() => setBottomSeal(opt.id)}
-              className={`text-left p-2 rounded-2xl border transition-all ${
+              className={`text-left p-3 rounded-xl border transition-all ${
                 bottomSeal === opt.id
                   ? "bg-emerald-500/10 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.1)]"
-                  : "bg-white/5 border-white/10 hover:border-white/20"
+                  : "bg-white border-slate-200 hover:border-slate-300"
               }`}
             >
               <div className="flex justify-between items-start mb-2">
                 <h3
-                  className={`text-xl font-bold ${bottomSeal === opt.id ? "text-emerald-400" : "text-white"}`}
+                  className={`text-lg font-bold ${bottomSeal === opt.id ? "text-emerald-600" : "text-slate-700"}`}
                 >
                   {opt.title}
                 </h3>
@@ -1084,7 +1130,7 @@ export default function OperablePartition() {
                   className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
                     bottomSeal === opt.id
                       ? "border-emerald-500 bg-emerald-500"
-                      : "border-white/20"
+                      : "border-slate-300"
                   }`}
                 >
                   {bottomSeal === opt.id && (
@@ -1092,7 +1138,7 @@ export default function OperablePartition() {
                   )}
                 </div>
               </div>
-              <p className="text-slate-400 text-sm leading-relaxed">
+              <p className="text-slate-600 text-sm leading-relaxed">
                 {opt.description}
               </p>
             </button>
@@ -1145,9 +1191,9 @@ export default function OperablePartition() {
 
     return (
       <div className="space-y-3 animate-in fade-in slide-in-from-right-4 duration-500">
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-sm mb-2">
-          <h2 className="text-2xl font-bold text-white mb-2">Panel Finish</h2>
-          <p className="text-slate-400 text-sm">
+        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm mb-2">
+          <h2 className="text-xl font-bold text-slate-700 mb-1">Panel Finish</h2>
+          <p className="text-slate-600 text-sm">
             Select the visual finish for the partition panels.
           </p>
         </div>
@@ -1157,15 +1203,15 @@ export default function OperablePartition() {
             <button
               key={opt.id}
               onClick={() => setFinishType(opt.id)}
-              className={`text-left p-2 rounded-xl border transition-all flex items-center justify-between group ${
+              className={`text-left p-3 rounded-xl border transition-all flex items-center justify-between group ${
                 finishType === opt.id
                   ? "bg-emerald-500/10 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.1)]"
-                  : "bg-white/5 border-white/10 hover:border-white/20"
+                  : "bg-white border-slate-200 hover:border-slate-300"
               }`}
             >
               <div>
                 <h3
-                  className={`font-bold ${finishType === opt.id ? "text-emerald-400" : "text-white"}`}
+                  className={`font-bold ${finishType === opt.id ? "text-emerald-600" : "text-slate-700"}`}
                 >
                   {opt.title}
                 </h3>
@@ -1174,7 +1220,7 @@ export default function OperablePartition() {
                 className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
                   finishType === opt.id
                     ? "border-emerald-500 bg-emerald-500"
-                    : "border-white/20"
+                    : "border-slate-300"
                 }`}
               >
                 {finishType === opt.id && (
@@ -1212,16 +1258,16 @@ export default function OperablePartition() {
 
     return (
       <div className="space-y-3 animate-in fade-in slide-in-from-right-4 duration-500">
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-sm">
-          <h2 className="text-2xl font-bold text-white mb-2">Hinge & Trim</h2>
-          <p className="text-slate-400 text-sm">
+        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
+          <h2 className="text-xl font-bold text-slate-700 mb-1">Hinge & Trim</h2>
+          <p className="text-slate-600 text-sm">
             Customize the hardware appearance.
           </p>
         </div>
 
         {/* Hinge Selection */}
         <div className="space-y-3">
-          <h3 className="text-sm font-bold text-slate-300 uppercase tracking-widest pl-2">
+          <h3 className="text-sm font-bold text-slate-600 uppercase tracking-widest pl-1">
             Hinge Type
           </h3>
           <div className="grid grid-cols-2 gap-2">
@@ -1229,18 +1275,18 @@ export default function OperablePartition() {
               <button
                 key={opt.id}
                 onClick={() => setHingeType(opt.id)}
-                className={`p-2 rounded-xl border text-left transition-all ${
+                className={`p-3 rounded-xl border text-left transition-all ${
                   hingeType === opt.id
                     ? "bg-emerald-500/10 border-emerald-500"
-                    : "bg-white/5 border-white/10 hover:border-white/20"
+                    : "bg-white border-slate-200 hover:border-slate-300"
                 }`}
               >
                 <div
-                  className={`font-bold ${hingeType === opt.id ? "text-emerald-400" : "text-white"}`}
+                  className={`font-bold ${hingeType === opt.id ? "text-emerald-600" : "text-slate-700"}`}
                 >
                   {opt.title}
                 </div>
-                <div className="text-slate-500 text-xs mt-1">{opt.desc}</div>
+                <div className="text-slate-600 text-xs mt-1">{opt.desc}</div>
               </button>
             ))}
           </div>
@@ -1248,7 +1294,7 @@ export default function OperablePartition() {
 
         {/* Color Selection */}
         <div className="space-y-3">
-          <h3 className="text-sm font-bold text-slate-300 uppercase tracking-widest pl-2">
+          <h3 className="text-sm font-bold text-slate-600 uppercase tracking-widest pl-1">
             Trim Color
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
@@ -1256,14 +1302,14 @@ export default function OperablePartition() {
               <button
                 key={opt.id}
                 onClick={() => setTrimColor(opt.id)}
-                className={`p-2 rounded-xl border text-left transition-all flex items-center gap-2 ${
+                className={`p-3 rounded-xl border text-left transition-all flex items-center gap-2 ${
                   trimColor === opt.id
                     ? "bg-emerald-500/10 border-emerald-500"
-                    : "bg-white/5 border-white/10 hover:border-white/20"
+                    : "bg-white border-slate-200 hover:border-slate-300"
                 }`}
               >
                 <div
-                  className="w-8 h-8 rounded-full border border-white/20 shadow-sm"
+                  className="w-8 h-8 rounded-full border border-slate-300 shadow-sm"
                   style={{
                     backgroundColor: opt.hex,
                     backgroundImage:
@@ -1273,7 +1319,7 @@ export default function OperablePartition() {
                   }}
                 />
                 <div
-                  className={`font-medium text-sm ${trimColor === opt.id ? "text-emerald-400" : "text-slate-300"}`}
+                  className={`font-medium text-sm ${trimColor === opt.id ? "text-emerald-600" : "text-slate-700"}`}
                 >
                   {opt.title}
                 </div>
@@ -1288,11 +1334,11 @@ export default function OperablePartition() {
   const renderOptionsStep = () => {
     return (
       <div className="space-y-3 animate-in fade-in slide-in-from-right-4 duration-500">
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-sm mb-2">
-          <h2 className="text-2xl font-bold text-white mb-2">
+        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm mb-2">
+          <h2 className="text-xl font-bold text-slate-700 mb-1">
             Additional Options
           </h2>
-          <p className="text-slate-400 text-sm">
+          <p className="text-slate-600 text-sm">
             Select whether a passdoor or worksurface is needed.
           </p>
         </div>
@@ -1301,19 +1347,19 @@ export default function OperablePartition() {
           {/* Passdoor */}
           <button
             onClick={() => setPassdoor(!passdoor)}
-            className={`w-full text-left p-2 rounded-2xl border transition-all flex items-start justify-between ${
+            className={`w-full text-left p-3 rounded-xl border transition-all flex items-start justify-between ${
               passdoor
                 ? "bg-emerald-500/10 border-emerald-500"
-                : "bg-white/5 border-white/10 hover:border-white/20"
+                : "bg-white border-slate-200 hover:border-slate-300"
             }`}
           >
             <div>
               <h3
-                className={`text-xl font-bold mb-2 ${passdoor ? "text-emerald-400" : "text-white"}`}
+                className={`text-lg font-bold mb-2 ${passdoor ? "text-emerald-600" : "text-slate-700"}`}
               >
                 Passdoor
               </h3>
-              <ul className="text-slate-400 text-sm space-y-1 list-disc pl-4 marker:text-emerald-500/50">
+              <ul className="text-slate-600 text-sm space-y-1 list-disc pl-4 marker:text-emerald-500/50">
                 <li>ADA Compliant Hardware</li>
                 <li>Surface mounted or recessed exit signs</li>
                 <li>Door viewer option</li>
@@ -1325,7 +1371,7 @@ export default function OperablePartition() {
               className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all mt-1 ${
                 passdoor
                   ? "bg-emerald-500 text-black"
-                  : "bg-white/10 text-transparent"
+                  : "bg-slate-100 text-transparent"
               }`}
             >
               <svg
@@ -1345,23 +1391,23 @@ export default function OperablePartition() {
 
           {/* Worksurface */}
           <div
-            className={`rounded-2xl border transition-all overflow-hidden ${
+            className={`rounded-xl border transition-all overflow-hidden ${
               workSurface
                 ? "bg-emerald-500/5 border-emerald-500"
-                : "bg-white/5 border-white/10 hover:border-white/20"
+                : "bg-white border-slate-200 hover:border-slate-300"
             }`}
           >
             <button
               onClick={() => setWorkSurface(!workSurface)}
-              className="w-full text-left p-2 flex items-start justify-between"
+              className="w-full text-left p-3 flex items-start justify-between"
             >
               <div>
                 <h3
-                  className={`text-xl font-bold mb-2 ${workSurface ? "text-emerald-400" : "text-white"}`}
+                  className={`text-lg font-bold mb-2 ${workSurface ? "text-emerald-600" : "text-slate-700"}`}
                 >
                   Worksurface
                 </h3>
-                <ul className="text-slate-400 text-sm space-y-1 list-disc pl-4 marker:text-emerald-500/50">
+                <ul className="text-slate-600 text-sm space-y-1 list-disc pl-4 marker:text-emerald-500/50">
                   <li>Dry Marker Boards or Tack Surfaces</li>
                   <li>4' by 4' or Full Height / Width of Panel</li>
                   <li>Standard file line feature creates continuous surface</li>
@@ -1371,7 +1417,7 @@ export default function OperablePartition() {
                 className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all mt-1 ${
                   workSurface
                     ? "bg-emerald-500 text-black"
-                    : "bg-white/10 text-transparent"
+                    : "bg-slate-100 text-transparent"
                 }`}
               >
                 <svg
@@ -1392,13 +1438,13 @@ export default function OperablePartition() {
             {/* Sub-options for Worksurface */}
             {workSurface && (
               <div className="px-3 pb-3 pt-2 animate-in slide-in-from-top-2 duration-300">
-                <div className="grid grid-cols-2 gap-2 p-1 bg-black/40 rounded-xl">
+                <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl border border-slate-200">
                   <button
                     onClick={() => setWorkSurfaceType("marker_board")}
                     className={`py-2 px-3 rounded-lg text-sm font-bold transition-all ${
                       workSurfaceType === "marker_board"
                         ? "bg-emerald-500 text-black shadow-lg"
-                        : "text-slate-400 hover:text-white hover:bg-white/5"
+                        : "text-slate-600 hover:text-slate-900 hover:bg-white"
                     }`}
                   >
                     Marker Board
@@ -1408,7 +1454,7 @@ export default function OperablePartition() {
                     className={`py-2 px-3 rounded-lg text-sm font-bold transition-all ${
                       workSurfaceType === "tack_board"
                         ? "bg-emerald-500 text-black shadow-lg"
-                        : "text-slate-400 hover:text-white hover:bg-white/5"
+                        : "text-slate-600 hover:text-slate-900 hover:bg-white"
                     }`}
                   >
                     Tack Board
@@ -1425,16 +1471,17 @@ export default function OperablePartition() {
   const renderProjectInfoStep = () => {
     return (
       <div className="space-y-3 animate-in fade-in slide-in-from-right-4 duration-500">
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-sm mb-2">
-          <h2 className="text-2xl font-bold text-white mb-2">
+        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm mb-2">
+          <h2 className="text-xl font-bold text-slate-700 mb-1">
             Project Information
           </h2>
-          <p className="text-slate-400 text-sm">
+          <p className="text-slate-600 text-sm">
             Please provide details about the project.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="col-span-2">
             <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1">
               Project Name *
@@ -1445,7 +1492,7 @@ export default function OperablePartition() {
               onChange={(e) =>
                 setProjectInfo({ ...projectInfo, projectName: e.target.value })
               }
-              className="w-full bg-white/5 border border-white/10 rounded-md px-2 py-2 text-white text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all font-medium"
+              className="w-full bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all font-medium"
               placeholder="e.g. Modernfold HQ Renovation"
             />
           </div>
@@ -1460,7 +1507,7 @@ export default function OperablePartition() {
               onChange={(e) =>
                 setProjectInfo({ ...projectInfo, city: e.target.value })
               }
-              className="w-full bg-white/5 border border-white/10 rounded-md px-2 py-2 text-white text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+              className="w-full bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all"
             />
           </div>
           <div>
@@ -1474,7 +1521,7 @@ export default function OperablePartition() {
                 onChange={(e) =>
                   setProjectInfo({ ...projectInfo, state: e.target.value })
                 }
-                className="w-1/3 bg-white/5 border border-white/10 rounded-md px-2 py-2 text-white text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+                className="w-1/3 bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all"
                 placeholder="State"
               />
               <input
@@ -1483,13 +1530,13 @@ export default function OperablePartition() {
                 onChange={(e) =>
                   setProjectInfo({ ...projectInfo, zip: e.target.value })
                 }
-                className="w-2/3 bg-white/5 border border-white/10 rounded-md px-2 py-2 text-white text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+                className="w-2/3 bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all"
                 placeholder="Zip Code"
               />
             </div>
           </div>
 
-          <div className="col-span-2 h-[1px] bg-white/5 my-2" />
+          <div className="col-span-2 h-[1px] bg-slate-200 my-2" />
 
           <div>
             <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1">
@@ -1501,7 +1548,7 @@ export default function OperablePartition() {
               onChange={(e) =>
                 setProjectInfo({ ...projectInfo, architect: e.target.value })
               }
-              className="w-full bg-white/5 border border-white/10 rounded-md px-2 py-2 text-white text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+              className="w-full bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all"
             />
           </div>
           <div>
@@ -1517,7 +1564,7 @@ export default function OperablePartition() {
                   contactPerson: e.target.value,
                 })
               }
-              className="w-full bg-white/5 border border-white/10 rounded-md px-2 py-2 text-white text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+              className="w-full bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all"
             />
           </div>
 
@@ -1531,7 +1578,7 @@ export default function OperablePartition() {
               onChange={(e) =>
                 setProjectInfo({ ...projectInfo, email: e.target.value })
               }
-              className="w-full bg-white/5 border border-white/10 rounded-md px-2 py-2 text-white text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+              className="w-full bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all"
               placeholder="name@company.com"
             />
           </div>
@@ -1545,8 +1592,9 @@ export default function OperablePartition() {
               onChange={(e) =>
                 setProjectInfo({ ...projectInfo, phone: e.target.value })
               }
-              className="w-full bg-white/5 border border-white/10 rounded-md px-2 py-2 text-white text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+              className="w-full bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all"
             />
+          </div>
           </div>
         </div>
       </div>
@@ -1554,36 +1602,40 @@ export default function OperablePartition() {
   };
 
   return (
-    <div className="modernfold-light bg-slate-50 text-slate-800 font-sans selection:bg-emerald-500/30 w-full min-h-full">
+    <div className="modernfold-light bg-slate-50 text-slate-800 font-sans selection:bg-emerald-500/30 w-full min-h-full pb-6">
       <div className="flex flex-col w-full">
         {/* Main Content */}
         <div className="w-full relative">
-          <div className="w-full p-1">
-            <header className="mb-3">
-              <div className="flex items-center gap-2 mb-2">
+          <div className="w-full max-w-5xl mx-auto px-3 md:px-5 py-3">
+            <header className={`${card} mb-4`}>
+              <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-200">
                 <div className="h-6 w-2 bg-[color:var(--accent,#10b981)] rounded-sm" />
-                <h1 className="text-xl font-black tracking-tight text-slate-600 flex items-baseline gap-2">
+                <h1 className="text-xl font-black tracking-tight text-slate-700 flex items-baseline gap-2">
                   Design Planner
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
                     {STEP_LABELS[currentStep]}
                   </span>
                 </h1>
               </div>
 
-              {/* Radial Step Tracker (compact) */}
-              <div className="flex gap-2 mb-2 flex-wrap">
+              <div className="flex gap-2 flex-wrap">
                 {STEP_ORDER.map((id, idx) => {
                   const isActive = currentStep === id;
                   const currentIndex = STEP_ORDER.indexOf(currentStep);
-                  const nextStepId = STEP_ORDER[currentIndex + 1];
-                  const isNext = id === nextStepId;
+                  const furthestReachedIndex = Math.max(
+                    ...Array.from(visitedSteps).map((step) =>
+                      STEP_ORDER.indexOf(step),
+                    ),
+                  );
                   const isCurrentComplete = isStepComplete(currentStep);
                   const isCompleted =
                     id === "summary"
                       ? currentStep === "summary" && isFormComplete()
                       : isStepComplete(id);
-                  const isNextEnabled = isNext && isCurrentComplete;
-                  const isDisabled = idx > currentIndex && !isNextEnabled;
+                  const isNextEnabled =
+                    idx === furthestReachedIndex + 1 && isCurrentComplete;
+                  const isUnlockedByHistory = idx <= furthestReachedIndex;
+                  const isDisabled = !(isUnlockedByHistory || isNextEnabled);
                   return (
                     <button
                       key={id}
@@ -1603,22 +1655,54 @@ export default function OperablePartition() {
               </div>
             </header>
 
-            <section className="space-y-2">
+            <section className="space-y-3">
               {currentStep === "dimensions" && (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <div className={`${card} w-full`}>
-                    <label className="block text-xs text-slate-400 uppercase font-bold mb-1">
-                      Partition Location
-                    </label>
-                    <input
-                      type="text"
-                      value={location}
-                      onChange={(e) => setLocation(e.target.value)}
-                      placeholder="EX: BALLROOM A, OFFICE 201..."
-                      className="w-full bg-transparent border-none px-2 py-2 text-white text-sm focus:outline-none"
-                    />
+                    <div className="mb-3 pb-2 border-b border-slate-200">
+                      <h3 className="text-sm font-bold tracking-wide text-slate-700">
+                        Partition Location
+                      </h3>
+                    </div>
+                    <div>
+                      <input
+                        type="text"
+                        value={location}
+                        onChange={(e) => setLocation(e.target.value)}
+                        placeholder="Location name"
+                        className="w-full bg-white border border-slate-300 rounded-md px-2 py-2 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-2">
+                  <div className={`${card} w-full`}>
+                    <div className="mb-3 pb-2 border-b border-slate-200">
+                      <h3 className="text-sm font-bold tracking-wide text-slate-700">
+                        Dimension Unit
+                      </h3>
+                    </div>
+                    <div className="grid grid-flow-col auto-cols-max gap-1 bg-slate-100 p-0.5 rounded-lg w-full border border-slate-200 overflow-x-auto">
+                        {(["feet-inches", "inches", "metric"] as DimensionMode[]).map(
+                          (mode) => (
+                            <button
+                              key={mode}
+                              onClick={() => handleDimensionModeChange(mode)}
+                              className={`px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wide whitespace-nowrap transition-all ${
+                                dimensionMode === mode
+                                  ? "bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
+                                  : "text-slate-600 hover:text-slate-900 hover:bg-white"
+                              }`}
+                            >
+                              {mode === "feet-inches"
+                                ? "Ft & In"
+                                : mode === "inches"
+                                  ? "Inches"
+                                  : "Metric"}
+                            </button>
+                          ),
+                        )}
+                    </div>
+                  </div>
+                  <div className="space-y-3">
                     {renderDimensionInput("Opening Width", width, setWidth)}
                     {renderDimensionInput("Opening Height", height, setHeight)}
                   </div>
@@ -1702,11 +1786,17 @@ export default function OperablePartition() {
                       <span className="text-right">{location}</span>
                       <span className="text-slate-500">Width:</span>{" "}
                       <span className="text-right">
-                        {width.feet}' {width.inchMain}"
+                        {formatDimensionForSummary({
+                          ...width,
+                          mode: dimensionMode,
+                        })}
                       </span>
                       <span className="text-slate-500">Height:</span>{" "}
                       <span className="text-right">
-                        {height.feet}' {height.inchMain}"
+                        {formatDimensionForSummary({
+                          ...height,
+                          mode: dimensionMode,
+                        })}
                       </span>
                     </div>
 
